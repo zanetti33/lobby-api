@@ -1,0 +1,37 @@
+services:
+  # the actual db
+  mongo:
+    image: mongo
+    container_name: lobby-mongodb-container
+    restart: always
+    volumes:
+      - ./import:/docker-entrypoint-initdb.d:ro
+    networks:
+      - lobby-internal-net
+
+  # the api built on top of the db
+  frontend:
+    build: .
+    container_name: lobby-api
+    depends_on:
+      - mongo
+    ports:
+      - ${PORT}:${PORT}
+    networks:
+      - lobby-internal-net
+      - town-of-saviom-shared-net
+    environment:
+      # mongodb-container -> nome container del db
+      # lobby -> nome del db
+      - MONGO_URI=mongodb://lobby-mongodb-container:27017/lobby
+      # production or development
+      - NODE_ENV=production
+      # auth-service container url
+      - AUTH_SERVICE_URL=http://login-api:3000
+      - PORT=${PORT}
+
+networks:
+  lobby-internal-net:
+    driver: bridge
+  town-of-saviom-shared-net:
+    external: true

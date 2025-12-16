@@ -1,0 +1,50 @@
+# Overview of the API
+openapi: 3.1.1
+info:
+  title: Lobby API
+  version: 1.0.0
+  description: API for managing rooms and lobby information.
+          
+paths:
+  /rooms:
+    get:
+      summary: Returns a list of rooms.
+      tags:
+        - Room Info
+      security:
+        - bearerAuth: []
+      produces:
+        - application/json
+      responses:
+        200:
+          description: A list of rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Room"
+        401:
+          description: Unauthorized (Invalid Token or not admin).
+
+components:
+  # -------------------------
+  # SECURITY SCHEMES
+  # -------------------------
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # -------------------------
+  # DATA SCHEMAS
+  # -------------------------
+  schemas:
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
