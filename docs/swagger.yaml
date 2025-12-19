@@ -26,6 +26,89 @@ paths:
                   $ref: "#/components/schemas/Room"
         401:
           description: Unauthorized (Invalid Token or not admin).
+    post:
+      summary: Adds a new room.
+      tags:
+        - Room Info
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomRequest'
+      responses:
+        201:
+          description: Room added correctly
+        400:
+          description: Invalid data
+        409:
+          description: Room already present
+  /rooms/room/addPlayer:
+    put:
+      summary: Update numbOfPlayers
+      tags:
+        - User Info
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - numbOfPlayers
+                - roomCapacity
+              properties:
+                numbOfPlayers:
+                  type: int
+                  example: 6
+      responses:
+        200:
+          description: Number of Players updated correctly.
+        401:
+          description: Unauthorized (Invalid Token).
+        409:
+          description: Room already full.
+  /rooms/room/removePlayer:
+    put:
+      summary: Update numbOfPlayers
+      tags:
+        - User Info
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - numbOfPlayers
+                - roomCapacity
+              properties:
+                numbOfPlayers:
+                  type: int
+                  example: 6
+      responses:
+        200:
+          description: Number of Players updated correctly.
+        400:
+          description: Room already empty.
+        401:
+          description: Unauthorized (Invalid Token).
+  /rooms/room/delete:
+    delete:
+      summary: Delete room
+      tags:
+        - Room Info
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Room deleted correctly.
+        401:
+          description: Unauthorized (Invalid Token).
 
 components:
   # -------------------------
