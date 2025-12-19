@@ -1,3 +1,7 @@
 {
-    "name": "pippo room"
+    "code": "123ab",
+    "name": "pippo room",
+    "modality": "classic",
+    "numbOfPlayers": 6,
+    "roomCapacity": 8
 }
