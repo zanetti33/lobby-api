@@ -1,7 +1,13 @@
 {
     "code": "123ab",
     "name": "pippo room",
-    "modality": "classic",
-    "numbOfPlayers": 6,
+    "gameMode": "classic",
     "roomCapacity": 8
+}
+{
+    "code": "qwert",
+    "name": "Stanza numero 2",
+    "gameMode": "advanced",
+    "numberOfPlayers": 4,
+    "roomCapacity": 6
 }

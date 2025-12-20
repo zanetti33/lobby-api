@@ -27,7 +27,7 @@ exports.getRoom = (req, res) => {
 exports.createRoom = (req, res) => {
     const room = new roomModel(req.body);
     //console.log(room);
-    if (!room.code || !room.name || !room.modality || !room.roomCapacity) {
+    if (!room.code || !room.name || !room.gameMode || !room.roomCapacity) {
         return res.status(400).send('Missing parameters');
     }
     room.save()
@@ -48,9 +48,9 @@ exports.addPlayer = (req, res) => {
     roomModel.findOneAndUpdate(
         { 
             _id: req.roomInfo.id, 
-            $expr: { $lt: ["$numbOfPlayers", "$roomCapacity"] } 
+            $expr: { $lt: ["$numberOfPlayers", "$roomCapacity"] } 
         },
-        { $inc: { numbOfPlayers: 1 } },
+        { $inc: { numberOfPlayers: 1 } },
         { new: true } // Restituisce il documento aggiornato
     )
     .then(doc => {
@@ -79,7 +79,7 @@ exports.removePlayer = (req, res) => {
             _id: req.roomInfo.id, 
             numbOfPlayers: { $gt: 0 } // "Greater Than 0": evita numeri negativi
         },
-        { $inc: { numbOfPlayers: -1 } },
+        { $inc: { numberOfPlayers: -1 } },
         { new: true }
     )
     .then(doc => {

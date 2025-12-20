@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
-// TODO cambiare userModel in roomModel e cambiare i campi di conseguenza
 const roomSchema = new mongoose.Schema({
-    code: {type: String, unique:true, length: 5},
-    name: {type: String, unique: true},
-    modality: { 
+    code: {type: String, unique: true, length: 5, required: true},
+    name: {type: String, unique: true, required: true},
+    gameMode: { 
         type: String, 
         enum: ['classic', 'advanced'], 
         required: true 
     },
-    numbOfPlayers: {type: Int, default: 0},
-    roomCapacity: {type: Int, required: true}
+    numberOfPlayers: {type: Number, default: 1}, //the lobby starts with one player: the owner
+    roomCapacity: {type: Number, required: true}
+    //forse ci vorrà anche un vettore con id o username dei giocatori 
 }, {
     versionKey: false
 });

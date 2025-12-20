@@ -45,9 +45,9 @@ paths:
           description: Room already present
   /rooms/room/addPlayer:
     put:
-      summary: Update numbOfPlayers
+      summary: Update numberOfPlayers
       tags:
-        - User Info
+        - Room Info
       security:
         - bearerAuth: []
       requestBody:
@@ -57,7 +57,7 @@ paths:
             schema:
               type: object
               required:
-                - numbOfPlayers
+                - numberOfPlayers
                 - roomCapacity
               properties:
                 numbOfPlayers:
@@ -72,9 +72,9 @@ paths:
           description: Room already full.
   /rooms/room/removePlayer:
     put:
-      summary: Update numbOfPlayers
+      summary: Update numberOfPlayers
       tags:
-        - User Info
+        - Room Info
       security:
         - bearerAuth: []
       requestBody:
@@ -84,7 +84,7 @@ paths:
             schema:
               type: object
               required:
-                - numbOfPlayers
+                - numberOfPlayers
                 - roomCapacity
               properties:
                 numbOfPlayers:
@@ -131,3 +131,34 @@ components:
         id:
           type: integer
           example: 123
+        code:
+          type: string
+          example: 123ab
+        name:
+          type: string
+          example: room 1
+        gameMode:
+          type: string
+          example: classic
+        numberOfPlayers:
+          type: integer
+          example: 1
+        roomCapacity:
+          type: integer
+          example: 8
+
+    RoomRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          example: ciao1
+        name:
+          type: string
+          example: new room
+        gameMode:
+          type: string
+          example: classic
+        roomCapacity:
+          type: string
+          example: 6
