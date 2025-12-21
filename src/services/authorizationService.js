@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const caUrl = process.env.CA_URL || 'http://auth-service';
+const caUrl = process.env.AUTH_SERVICE_URL || 'http://auth-service:';
 const algorithm = 'RS256';
 const issuer = 'login-api';
 let cachedPublicKey = null;

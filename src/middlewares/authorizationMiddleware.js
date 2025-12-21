@@ -1,6 +1,6 @@
 const {validateToken} = require('../services/authorizationService');
 
-exports.authorize = (req, res, next) => {
+exports.authorize = async (req, res, next) => {
     const authHeader = req.headers['authorization']
     console.log(authHeader);
     // Header format is: "Bearer <token>"
@@ -11,7 +11,7 @@ exports.authorize = (req, res, next) => {
     }
 
     try {
-        req.userInfo = validateToken(token);
+        req.userInfo = await validateToken(token);
     } catch (err) {
         console.error(err);
         return res.sendStatus(403);
