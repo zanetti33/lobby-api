@@ -1,32 +1,53 @@
 const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const yaml = require('yamljs');
+const path = require('path');
 const mongoose = require('mongoose');
+const swaggerUi = require('swagger-ui-express');
+const { Server } = require("socket.io");
 const protectedRouter = require('./src/routes/protectedRouter');
 const publicRouter = require('./src/routes/publicRouter');
 const authorizationMiddleware = require('./src/middlewares/authorizationMiddleware');
-const cors = require('cors');
-const YAML = require('yamljs');
-const path = require('path');
-// env variable set from docker-compose.yaml to access the database container
+const { roomSocket } = require('./src/socket/roomSocket');
+// env variables
 const connectionString =  process.env.MONGO_URI || 'mongodb://localhost:27017/lobby';
-const isDev = process.env.NODE_ENV == 'development';
-// env variable set from docker-compose.yaml to access set the service port
+const isDebug = process.env.NODE_ENV == 'debug';
 const port = process.env.PORT || 3000;
-const swaggerDocument = YAML.load(path.join(__dirname, './docs/swagger.yaml'));
-const swaggerUi = require('swagger-ui-express');
 
+// Swagger setup
+const swaggerDocument = yaml.load(path.join(__dirname, './docs/swagger.yaml'));
+
+// Mongoose setup
 mongoose.connect(connectionString);
 
+// Server setup
 const app = express();
-// Debugging middleware
-app.use((req, res, next) => {
-    console.log(`[DEBUG] Request received: ${req.method} ${req.originalUrl}`);
-    next();
+const httpServer = http.createServer(app); 
+const io = new Server(httpServer, {
+    cors: {
+        // Allow connections from your frontend
+        origin: "*", 
+        methods: ["GET", "POST"]
+    }
 });
+app.set('io', io);
+
+// Debugging middleware
+if (isDebug) {
+    app.use((req, _, next) => {
+        console.log(`[DEBUG] Request received: ${req.method} ${req.originalUrl}`);
+        next();
+    });
+}
+
+// CORS setup
 app.use(cors({
     credentials: true
 }));
 app.use(express.json());
 app.use(express.static('public'));
+
 // Swagger UI setup
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
@@ -34,9 +55,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/', publicRouter);
 
 // Authorization middleware
-if (!isDev) {
-    app.use(authorizationMiddleware.authorize);
-}
+io.use(authorizationMiddleware.socketAuthorize);
+app.use(authorizationMiddleware.authorize);
+
+// Protected Socket.io handler
+io.on("connection", roomSocket);
 
 // Protected API routes
 app.use('/', protectedRouter);

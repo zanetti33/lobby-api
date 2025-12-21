@@ -40,8 +40,8 @@ services:
       # mongodb-container -> nome container del db
       # lobby -> nome del db
       - MONGO_URI=mongodb://lobby-mongodb-container:27017/lobby
-      # production or development
-      - NODE_ENV=production
+      # production or debug
+      - NODE_ENV=debug
       # auth-service container url
       - AUTH_SERVICE_URL=http://login-api:${LOGIN_API_PORT}
       - PORT=${PORT}

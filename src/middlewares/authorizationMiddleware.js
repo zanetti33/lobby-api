@@ -18,3 +18,17 @@ exports.authorize = async (req, res, next) => {
     }
     next();
 };
+
+exports.socketAuthorize = async (socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+        return res.sendStatus(401);
+    }
+    try {
+        socket.userInfo = await validateToken(token);
+    } catch (err) {
+        console.error(err);
+        return res.sendStatus(403);
+    }
+    next();
+};
