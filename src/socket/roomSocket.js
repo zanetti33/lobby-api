@@ -2,33 +2,55 @@ exports.roomSocket = (socket) => {
     console.log(`User Connected: ${socket.userInfo.name} (${socket.userInfo.id})`);
 
     // Pass the socket to our logic handler
-    registerJoinLobbyHandler(io, socket);
-    registerSendMessageHandler(io, socket);
-    registerDisconnectHandler(io, socket);
+    registerJoinLobbyHandler(socket);
+    //registerSendMessageHandler(io, socket);
+    registerDisconnectHandler(socket);
 }
 
-registerDisconnectHandler = (io, socket) => {
+// EVENT: User Disconnects
+registerDisconnectHandler = (socket) => {
     socket.on("disconnect", () => {
         console.log(`User Disconnected: ${socket.userInfo.name} (${socket.userInfo.id})`);
         // Notify OTHER users in the room that someone left
-        socket.to(roomId).emit("NOTIFICATION", `${socket.userInfo.name} left...`);
+        socket.to(roomId).emit("PLAYER_LEFT", `${socket.userInfo.name} left...`);
     });
 };
 
 // EVENT: User Joins a specific room channel
-registerLobbyHandlers = (io, socket) => {
-    socket.on("JOIN_LOBBY_ROOM", (roomId) => {
-        // Socket.io "Rooms" are just string channels. 
-        // We use the mongoDB Room ID as the channel name.
-        socket.join(roomId);
-        
-        console.log(`${socket.userInfo.name} joined channel: ${roomId}`);
-        // Notify OTHER users in the room that someone joined
-        socket.to(roomId).emit("NOTIFICATION", `${socket.userInfo.name} joined!`);
+registerJoinLobbyHandler = (socket) => {
+    socket.on("JOIN_LOBBY_ROOM", async (roomId) => {
+        try {
+            // Get the user ID from the socket (set by auth middleware)
+            const userId = socket.userInfo.id; 
+
+            // We look for a room that matches the ID AND contains this player
+            const room = await Room.findOne({ 
+                _id: roomId, 
+                "players.userId": userId 
+            });
+            if (!room) {
+                console.warn(`Security Alert: User ${userId} tried to join room ${roomId} but is not on the list.`);
+                return; 
+            }
+
+            // Allow access
+            socket.join(roomId);
+            console.log(`Allowed ${socket.userInfo.name} to join socket channel ${roomId}`);
+        } catch (err) {
+            console.error("Socket Join Error:", err);
+        }
     });
 }
 
-// EVENT: Simple Lobby Chat
+exports.sendPlayerJoinedEvent = (io, roomId, userInfo) => {
+    io.in(roomId).emit("PLAYER_JOINED", {
+        name: userInfo.name,
+        imageUrl: userInfo.imageUrl
+    });
+}
+
+// Next features
+/*
 registerSendMessageHandler = (io, socket) => {
     socket.on("SEND_MESSAGE", ({ roomId, message }) => {
         console.log(`Message from ${socket.userInfo.name} in room ${roomId}: ${message}`);
@@ -40,3 +62,4 @@ registerSendMessageHandler = (io, socket) => {
         });
     });
 };
+*/
