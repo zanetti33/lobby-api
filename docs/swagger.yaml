@@ -4,11 +4,11 @@ info:
   title: Lobby API
   version: 1.0.0
   description: API for managing rooms and lobby information.
-          
+      
 paths:
   /rooms:
     get:
-      summary: Returns a list of rooms.
+      summary: Returns a list of rooms
       tags:
         - Room Info
       security:
@@ -25,11 +25,16 @@ paths:
                 items:
                   $ref: "#/components/schemas/Room"
         401:
-          description: Unauthorized (Invalid Token or not admin).
+          description: Unauthorized (Invalid Token or not admin)
+        500:
+          description: Server Error
     post:
       summary: Adds a new room.
+      description: Create a room by generating a unique code and setting the sender as the Host.
       tags:
-        - Room Info
+        - Rooms
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -40,75 +45,153 @@ paths:
         201:
           description: Room added correctly
         400:
-          description: Invalid data
+          description: Missing parameters or invalid data
         409:
-          description: Room already present
-  /rooms/room/addPlayer:
-    put:
-      summary: Update numberOfPlayers
+          description: Room already present Name collision
+        500:
+          description: Internal Server Error
+  /rooms/{id}:
+    get:
+      summary: Retrieve details of a specific room
       tags:
         - Room Info
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - numberOfPlayers
-                - roomCapacity
-              properties:
-                numbOfPlayers:
-                  type: int
-                  example: 6
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The MongoDB ID of the room
+          schema:
+            type: string
       responses:
         200:
-          description: Number of Players updated correctly.
-        401:
-          description: Unauthorized (Invalid Token).
-        409:
-          description: Room already full.
-  /rooms/room/removePlayer:
-    put:
-      summary: Update numberOfPlayers
-      tags:
-        - Room Info
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - numberOfPlayers
-                - roomCapacity
-              properties:
-                numbOfPlayers:
-                  type: int
-                  example: 6
-      responses:
-        200:
-          description: Number of Players updated correctly.
-        400:
-          description: Room already empty.
-        401:
-          description: Unauthorized (Invalid Token).
-  /rooms/room/delete:
+          description: Room details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        404:
+          description: Room not found
+        500:
+          description: Server Error
     delete:
-      summary: Delete room
+      summary: Delete a room by ID
       tags:
-        - Room Info
+        - Rooms
       security:
         - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         200:
-          description: Room deleted correctly.
-        401:
-          description: Unauthorized (Invalid Token).
+          description: Room deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        404:
+          description: Room not found
+  /rooms/{id}/players:
+    post:
+      summary: Add a player to the room
+      description: Check if the room is full or if the player is already present before adding them.
+      tags:
+        - Players
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Player added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        403:
+          description: Room already full
+        404:
+          description: Room not found
+        409:
+          description: Player already in a room
+        500:
+          description: Server Error
+    put:
+      summary: Change a player's "Ready" status
+      tags:
+        - Players
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ready:
+                  type: boolean
+                  example: true
+      responses:
+        200:
+          description: State updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        400:
+          description: Missing parameter
+        404:
+          description: Room or User not found
+  /rooms/{id}/players/{userId}:
+    delete:
+      summary: Removes a player from the room
+      description: If the removed player is the host, the room is deleted.
+      tags:
+        - Players
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Player removed or room deleted (if host)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Room'
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Room deleted because the host left"
+        404:
+          description: Room or User not found
 
 components:
   # -------------------------
@@ -124,41 +207,69 @@ components:
   # DATA SCHEMAS
   # -------------------------
   schemas:
+    Player:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "6585f9e2b1c2d3e4f5a6b7c0"
+        name:
+          type: string
+          example: "MarioRossi"
+        imageUrl:
+          type: string
+          example: "http://example.com/avatar.jpg"
+        isHost:
+          type: boolean
+          example: false
+        isReady:
+          type: boolean
+          example: false
 
     Room:
       type: object
       properties:
-        id:
-          type: integer
-          example: 123
+        _id:
+          type: string
+          example: "6585f9e2b1c2d3e4f5a6b7c8"
         code:
           type: string
-          example: 123ab
+          example: "ABC12"
         name:
           type: string
-          example: room 1
+          example: "Lobby Pro"
         gameMode:
           type: string
-          example: classic
-        numberOfPlayers:
-          type: integer
-          example: 1
+          enum: [classic, advanced]
+          example: "classic"
         roomCapacity:
           type: integer
-          example: 8
+          example: 4
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        numberOfPlayers:
+          type: integer
+          description: Virtual field (calculated as players.length)
+          example: 1
 
     RoomRequest:
       type: object
+      required:
+        - name
+        - gameMode
+        - roomCapacity
       properties:
-        code:
-          type: string
-          example: ciao1
         name:
           type: string
-          example: new room
+          example: "Lobby Pro"
         gameMode:
           type: string
-          example: classic
+          enum: [classic, advanced]
+          example: "classic"
         roomCapacity:
-          type: string
-          example: 6
+          type: integer
+          minimum: 2
+          maximum: 10
+          example: 4
