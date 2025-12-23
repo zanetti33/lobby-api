@@ -36,6 +36,13 @@ registerJoinLobbyHandler = (socket) => {
             // Allow access
             socket.join(roomId);
             console.log(`Allowed ${socket.userInfo.name} to join socket channel ${roomId}`);
+
+            // If the game is already started, notify the player
+            if (room.status === 'PLAYING') {
+                socket.emit("GAME_STARTED", {
+                    // TODO add any relevant game state info here
+                });
+            }
         } catch (err) {
             console.error("Socket Join Error:", err);
         }
