@@ -11,7 +11,7 @@ const publicRouter = require('./src/routes/publicRouter');
 const authorizationMiddleware = require('./src/middlewares/authorizationMiddleware');
 const { roomSocket } = require('./src/socket/roomSocket');
 // env variables
-const connectionString =  process.env.MONGO_URI || 'mongodb://localhost:27017/lobby';
+const connectionString = process.env.MONGO_URI || 'mongodb://localhost:27017/lobby';
 const isDebug = process.env.NODE_ENV == 'debug';
 const port = process.env.PORT || 3000;
 
