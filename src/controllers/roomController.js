@@ -90,18 +90,22 @@ exports.addPlayer = (req, res) => {
     roomModel.findOne({ "players.userId": id })
         .then(existingRoom => {
             if (existingRoom) {
-                return res.status(409).send(`User already in a room (Room Code: ${existingRoom.code})`);
+                res.status(409).send(`User already in a room (Room Code: ${existingRoom.code})`);
+                return null;
             }
             return roomModel.findById(roomId);
         })
         .then(room => {
             if (!room) {
-                if (res.headersSent) return; 
-                return res.status(404).send('Room not found');
+                if(!res.headersSent){
+                    res.status(404).send('Room not found');
+                }
+                return null;
             }
             //Controlliamo se la stanza è già piena
             if (room.players.length >= room.roomCapacity) {
-                return res.status(403).send('Room is full');
+                res.status(403).send('Room is full');
+                return null;
             }
             const newPlayer = {
                 userId: id,
@@ -111,13 +115,19 @@ exports.addPlayer = (req, res) => {
             room.players.push(newPlayer);
             return room.save();
         })
+        .then(savedRoom => {
+            if (savedRoom && !res.headersSent) {
+                res.status(200).json(savedRoom);
+            }
+        })
         .catch(err => {
             console.error(err);
-            if (res.headersSent) return;
-            if (err.name === 'ValidationError') {
-                return res.status(400).send(err.message);
+            if (!res.headersSent) {
+                if (err.name === 'ValidationError') {
+                    return res.status(400).send(err.message);
+                }
+                res.status(500).send('Internal Server Error');
             }
-            res.status(500).send('Internal Server Error while joining the room');
         });
 };
 
@@ -162,7 +172,7 @@ exports.removePlayer = (req, res) => {
             }
             //Se il giocatore è l'host, cancelliamo l'intera stanza
             if (playerToRemove.isHost) {
-                return roomModel.findByIdAndDelete(roomId)
+                return roomModel.findByIdAndDelete(id)
                     .then(() => {
                         return res.status(200).json({ message: 'Room deleted because the host left' });
                     });
