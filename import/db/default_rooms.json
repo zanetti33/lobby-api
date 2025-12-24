@@ -1,13 +1,44 @@
 {
-    "code": "123ab",
+    "code": "567CD",
     "name": "pippo room",
     "gameMode": "classic",
-    "roomCapacity": 8
+    "players": [
+    {
+      "userId": "694aa74d8c5076c9f3c2cd2c",
+      "name": "Marco_Dev",
+      "imageUrl": "werewolf.png",
+      "isHost": true,
+      "isReady": true
+    }
+  ],
+  "roomCapacity": 8
 }
 {
-    "code": "qwert",
+    "code": "AB234",
     "name": "Stanza numero 2",
     "gameMode": "advanced",
-    "numberOfPlayers": 4,
+    "players": [
+    {
+      "userId": "712aa74d8c5076c9f3c2cd2c",
+      "name": "Sara_Skill",
+      "imageUrl": null,
+      "isHost": true,
+      "isReady": true
+    },
+    {
+      "userId": "de71274d8c5076c9f3c2cd2c",
+      "name": "Luca_99",
+      "imageUrl": "werewolf.png",
+      "isHost": false,
+      "isReady": true
+    },
+    {
+      "userId": "694aa74d8c5076c9f3c2cd2d",
+      "name": "Player_Guest",
+      "imageUrl": null,
+      "isHost": false,
+      "isReady": false
+    }
+  ],
     "roomCapacity": 6
 }

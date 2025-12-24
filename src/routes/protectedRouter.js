@@ -11,13 +11,16 @@ router.route('/rooms')
 router.route('/rooms/:id')
     .get(controller.getRoom);
 
-router.route('/rooms/room/addPlayer')
-    .put(controller.addPlayer);
+router.route('/rooms/:id/players')
+    .post(controller.addPlayer);
 
-router.route('/rooms/room/removePlayer')
-    .put(controller.removePlayer);
+router.route('/rooms/:id/players')
+    .put(controller.isReady);
 
-router.route('/rooms/room/delete')
+router.route('/rooms/:id/players/:userId')
+    .delete(controller.removePlayer);
+
+router.route('/rooms/:id')
     .delete(controller.deleteRoom);
 
 module.exports = router;
