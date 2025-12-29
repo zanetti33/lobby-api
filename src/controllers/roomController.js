@@ -82,6 +82,30 @@ exports.getRoom = (req, res) => {
         });
 }
 
+exports.getRoomByCodeOrName = (req, res) => {
+    const identifier = req.params.codeOrName;
+
+    if (!identifier) {
+        return res.status(400).send('Missing parameters');
+    }
+
+    roomModel.findOne({
+        $or: [
+            { code: identifier },
+            { name: identifier }
+        ]
+    })
+    .then(room => {
+        if (!room) {
+            return res.status(404).send('Room not found.');
+        }
+        res.json(room);
+    })
+    .catch(err => {
+        res.status(500).send(err);
+    });
+}
+
 exports.addPlayer = (req, res) => {
     const roomId = req.params.id;
     const { id, name, imageUrl } = req.userInfo;

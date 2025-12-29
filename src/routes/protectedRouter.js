@@ -8,6 +8,9 @@ router.route('/rooms')
 router.route('/rooms')
     .post(controller.createRoom);
 
+router.route('/rooms/search/:codeOrName')
+    .get(controller.getRoomByCodeOrName);
+
 router.route('/rooms/:id')
     .get(controller.getRoom);
 
