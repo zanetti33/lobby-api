@@ -111,7 +111,7 @@ paths:
           schema:
             type: string
       responses:
-        200:
+        201:
           description: Player added successfully
           content:
             application/json:
@@ -161,7 +161,7 @@ paths:
   /rooms/{id}/players/{userId}:
     delete:
       summary: Removes a player from the room
-      description: If the removed player is the host, the room is deleted.
+      description: if the userID is not provided, it removes the logged user. If the removed player is the host, the room is deleted.
       tags:
         - Players
       security:
@@ -174,7 +174,6 @@ paths:
             type: string
         - name: userId
           in: path
-          required: true
           schema:
             type: string
       responses:

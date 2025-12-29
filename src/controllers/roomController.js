@@ -52,7 +52,7 @@ const { id, name, imageUrl } = req.userInfo;
                 return room.save();
             })
             .then(doc => {
-                if (doc) res.status(200).json(doc);
+                if (doc) res.status(201).json(doc);
             })
             .catch(err => {
                 if (err.code === 11000) {
@@ -117,7 +117,7 @@ exports.addPlayer = (req, res) => {
         })
         .then(savedRoom => {
             if (savedRoom && !res.headersSent) {
-                res.status(200).json(savedRoom);
+                res.status(201).json(savedRoom);
             }
         })
         .catch(err => {
@@ -159,7 +159,11 @@ exports.isReady = (req, res) => {
 
 exports.removePlayer = (req, res) => {
     const { id } = req.params; // roomId
-    const { userId } = req.params;
+    let { userId } = req.params;
+    //If the userId is not provided
+    if (userId == '{userId}') {
+        userId = req.userInfo.id;
+    }
 
     roomModel.findById(id)
         .then(room => {
