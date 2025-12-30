@@ -1,3 +1,5 @@
+const { roomModel } = require('../models/roomModel');
+
 exports.roomSocket = (socket) => {
     console.log(`User Connected: ${socket.userInfo.name} (${socket.userInfo.id})`);
 
@@ -34,7 +36,7 @@ registerJoinLobbyHandler = (socket) => {
             const userId = socket.userInfo.id; 
 
             // Security Check: DB Verification
-            const room = await Room.findOne({ 
+            const room = await roomModel.findOne({ 
                 _id: roomId, 
                 "players.userId": userId 
             });
