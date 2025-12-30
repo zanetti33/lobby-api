@@ -6,9 +6,6 @@ router.route('/rooms')
     .get(controller.listRooms)
     .post(controller.createRoom);
 
-router.route('/rooms/search/:codeOrName')
-    .get(controller.getRoomByCodeOrName);
-
 router.route('/rooms/:id')
     .get(controller.getRoom)
     .delete(controller.deleteRoom);

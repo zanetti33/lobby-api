@@ -11,6 +11,12 @@ paths:
       summary: Returns a list of rooms
       tags:
         - Room Info
+      parameters:
+        - name: codeOrName
+          in: query
+          required: false
+          schema:
+            type: string
       security:
         - bearerAuth: []
       produces:
@@ -96,30 +102,6 @@ paths:
                 $ref: '#/components/schemas/Room'
         404:
           description: Room not found
-  /rooms/search/{codeOrName}:
-    get:
-      summary: Search a specific room using code or name
-      tags:
-        - Room Info
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: codeOrName
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Room details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Room'
-        404:
-          description: Room not found
-        500:
-          description: Server Error
   /rooms/{id}/players:
     post:
       summary: Add a player to the room

@@ -1,12 +1,40 @@
 const { roomModel } = require('../models/roomModel');
 
 exports.listRooms = (req, res) => {
+    const identifier = req.query.codeOrName;
+    
+    if (!identifier) {
+        findAll(res);
+    } else {
+        findByCodeOrName(identifier, res);
+    }
+}
+
+findAll = (res) => {
     roomModel.find()
         .then(doc => {
             res.json(doc);
         })
         .catch(err => {
             res.send(err);
+        });
+}
+
+findByCodeOrName = (identifier, res) => {
+    roomModel.findOne({
+            $or: [
+                { code: { $regex: identifier, $options: 'i' } },
+                { name: { $regex: identifier, $options: 'i' } }
+            ]
+        })
+        .then(room => {
+            if (!room) {
+                return res.status(404).send('Room not found.');
+            }
+            res.json(room);
+        })
+        .catch(err => {
+            res.status(500).send(err);
         });
 }
 
@@ -80,30 +108,6 @@ exports.getRoom = (req, res) => {
         .catch(err => {
             res.status(500).send(err);
         });
-}
-
-exports.getRoomByCodeOrName = (req, res) => {
-    const identifier = req.params.codeOrName;
-
-    if (!identifier) {
-        return res.status(400).send('Missing parameters');
-    }
-
-    roomModel.findOne({
-        $or: [
-            { code: identifier },
-            { name: identifier }
-        ]
-    })
-    .then(room => {
-        if (!room) {
-            return res.status(404).send('Room not found.');
-        }
-        res.json(room);
-    })
-    .catch(err => {
-        res.status(500).send(err);
-    });
 }
 
 exports.addPlayer = (req, res) => {
