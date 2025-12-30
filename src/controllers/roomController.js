@@ -1,4 +1,5 @@
 const { roomModel } = require('../models/roomModel');
+const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent } = require('../socket/roomSocket');
 
 exports.listRooms = (req, res) => {
     const identifier = req.query.codeOrName;
@@ -49,7 +50,7 @@ const generateRandomCode = () => {
 };
 
 exports.createRoom = (req, res) => {
-const { id, name, imageUrl } = req.userInfo;
+    const { id, name, imageUrl } = req.userInfo;
 
     const attemptSave = () => {
         const code = generateRandomCode();
@@ -110,53 +111,48 @@ exports.getRoom = (req, res) => {
         });
 }
 
-exports.addPlayer = (req, res) => {
+exports.addPlayer = async (req, res) => {
     const roomId = req.params.id;
     const { id, name, imageUrl } = req.userInfo;
 
-    //Controlliamo se l'utente è già presente in QUALSIASI stanza del database
-    roomModel.findOne({ "players.userId": id })
-        .then(existingRoom => {
-            if (existingRoom) {
-                res.status(409).send(`User already in a room (Room Code: ${existingRoom.code})`);
-                return null;
+    try {
+        // 1. Check if user is already in a room
+        const existingRoom = await roomModel.findOne({ "players.userId": id });
+        if (existingRoom) {
+            if (existingRoom._id.toString() === roomId) {
+                return res.status(200).json(existingRoom);
             }
-            return roomModel.findById(roomId);
-        })
-        .then(room => {
-            if (!room) {
-                if(!res.headersSent){
-                    res.status(404).send('Room not found');
-                }
-                return null;
-            }
-            //Controlliamo se la stanza è già piena
-            if (room.players.length >= room.roomCapacity) {
-                res.status(403).send('Room is full');
-                return null;
-            }
-            const newPlayer = {
-                userId: id,
-                name: name,
-                imageUrl: imageUrl,
-            };
-            room.players.push(newPlayer);
-            return room.save();
-        })
-        .then(savedRoom => {
-            if (savedRoom && !res.headersSent) {
-                res.status(201).json(savedRoom);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            if (!res.headersSent) {
-                if (err.name === 'ValidationError') {
-                    return res.status(400).send(err.message);
-                }
-                res.status(500).send('Internal Server Error');
-            }
-        });
+            return res.status(409).send(`User already in a room (Code: ${existingRoom.code})`);
+        }
+
+        // 2. Find the target room
+        const room = await roomModel.findById(roomId);
+        if (!room) {
+            return res.status(404).send('Room not found');
+        }
+
+        // 3. Check capacity
+        if (room.players.length >= room.roomCapacity) {
+            return res.status(403).send('Room is full');
+        }
+
+        // 4. Update and Save
+        room.players.push({ userId: id, name, imageUrl });
+        const savedRoom = await room.save();
+
+        // 5. Emit Socket Event
+        sendPlayerJoinedEvent(req, roomId);
+
+        // 6. Respond to Client
+        return res.status(201).json(savedRoom);
+
+    } catch (err) {
+        console.error(err);
+        if (err.name === 'ValidationError') {
+            return res.status(400).send(err.message);
+        }
+        return res.status(500).send('Internal Server Error');
+    }
 };
 
 exports.isReady = (req, res) => {
@@ -206,6 +202,7 @@ exports.removePlayer = (req, res) => {
             if (playerToRemove.isHost) {
                 return roomModel.findByIdAndDelete(id)
                     .then(() => {
+                        sendRoomDeletedEvent(req, id);
                         return res.status(200).json({ message: 'Room deleted because the host left' });
                     });
             } else {
@@ -213,7 +210,10 @@ exports.removePlayer = (req, res) => {
                     id,
                     { $pull: { players: { userId: userId } } },
                     { new: true }
-                ).then(doc => res.json(doc));
+                ).then(doc => {
+                    sendPlayerLeftEvent(req, id)
+                    res.json(doc);
+                });
             }
         })
         .catch(err => {

@@ -117,6 +117,8 @@ paths:
           schema:
             type: string
       responses:
+        200:
+          description: Player already present in this room
         201:
           description: Player added successfully
           content:

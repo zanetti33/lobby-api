@@ -67,7 +67,7 @@ io.on("connection", roomSocket);
 // Protected API routes
 app.use('/', protectedRouter);
 
-app.listen(port, () => {
+httpServer.listen(port, () => {
     console.log(`Server listening on port ${port}`);
     console.log(`Swagger UI is available at http://localhost:${port}/api-docs`);
 });
