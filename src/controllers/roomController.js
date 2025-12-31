@@ -1,5 +1,4 @@
 const { roomModel } = require('../models/roomModel');
-const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent } = require('../socket/roomSocket');
 
 exports.listRooms = (req, res) => {
     const identifier = req.query.codeOrName;
@@ -50,7 +49,7 @@ const generateRandomCode = () => {
 };
 
 exports.createRoom = (req, res) => {
-    const { id, name, imageUrl } = req.userInfo;
+const { id, name, imageUrl } = req.userInfo;
 
     const attemptSave = () => {
         const code = generateRandomCode();
@@ -111,74 +110,142 @@ exports.getRoom = (req, res) => {
         });
 }
 
-exports.addPlayer = async (req, res) => {
+exports.addPlayer = (req, res) => {
     const roomId = req.params.id;
     const { id, name, imageUrl } = req.userInfo;
 
-    try {
-        // 1. Check if user is already in a room
-        const existingRoom = await roomModel.findOne({ "players.userId": id });
-        if (existingRoom) {
-            if (existingRoom._id.toString() === roomId) {
-                return res.status(200).json(existingRoom);
+    //Controlliamo se l'utente è già presente in QUALSIASI stanza del database
+    roomModel.findOne({ "players.userId": id })
+        .then(existingRoom => {
+            if (existingRoom) {
+                res.status(409).send(`User already in a room (Room Code: ${existingRoom.code})`);
+                return null;
             }
-            return res.status(409).send(`User already in a room (Code: ${existingRoom.code})`);
-        }
-
-        // 2. Find the target room
-        const room = await roomModel.findById(roomId);
-        if (!room) {
-            return res.status(404).send('Room not found');
-        }
-
-        // 3. Check capacity
-        if (room.players.length >= room.roomCapacity) {
-            return res.status(403).send('Room is full');
-        }
-
-        // 4. Update and Save
-        room.players.push({ userId: id, name, imageUrl });
-        const savedRoom = await room.save();
-
-        // 5. Emit Socket Event
-        sendPlayerJoinedEvent(req, roomId);
-
-        // 6. Respond to Client
-        return res.status(201).json(savedRoom);
-
-    } catch (err) {
-        console.error(err);
-        if (err.name === 'ValidationError') {
-            return res.status(400).send(err.message);
-        }
-        return res.status(500).send('Internal Server Error');
-    }
+            return roomModel.findById(roomId);
+        })
+        .then(room => {
+            if (!room) {
+                if(!res.headersSent){
+                    res.status(404).send('Room not found');
+                }
+                return null;
+            }
+            if(room.status == 'playing') {
+                res.status(400).send('Game is already started');
+                return null;
+            }
+            //Controlliamo se la stanza è già piena
+            if (room.players.length >= room.roomCapacity) {
+                res.status(403).send('Room is full');
+                return null;
+            }
+            const newPlayer = {
+                userId: id,
+                name: name,
+                imageUrl: imageUrl,
+            };
+            room.players.push(newPlayer);
+            return room.save();
+        })
+        .then(savedRoom => {
+            if (savedRoom && !res.headersSent) {
+                res.status(201).json(savedRoom);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if (!res.headersSent) {
+                if (err.name === 'ValidationError') {
+                    return res.status(400).send(err.message);
+                }
+                res.status(500).send('Internal Server Error');
+            }
+        });
 };
 
 exports.isReady = (req, res) => {
     const { id } = req.userInfo;
     const { ready } = req.body;
+    const roomId = req.params.id;
 
-    if (ready === undefined) {
-        return res.status(400).send('Missing "ready" parameter in request body');
+    if (ready === '{ready}') {
+        return res.status(400).json({ error: 'Missing "ready" parameter' });
     }
-    // Cerchiamo la stanza che ha quell'ID e che contiene il giocatore con quell'ID
-    // Usiamo l'operatore posizionale "$" per aggiornare solo il giocatore trovato
-    roomModel.findOneAndUpdate(
-        { _id: req.params.id, "players.userId": id },
-        { $set: { "players.$.isReady": ready } },
-        { new: true } // Restituisce il documento aggiornato
-    )
-    .then(doc => {
-        if (!doc) {
-            return res.status(404).send('Room not found or user is not a player in this room');
-        }
-        res.json(doc);
-    })
-    .catch(err => {
-        console.error(err);
-        res.status(500).send('Internal Server Error while updating ready status');
-    });
+
+    roomModel.findById(roomId)
+        .then(room => {
+            if (!room) {
+                return res.status(404).json({ error: 'Room not found' });
+            }
+            if (room.status === 'playing') {
+                return res.status(400).json({ error: 'Game is already started' });
+            }
+            return roomModel.findOneAndUpdate(
+                { _id: roomId, "players.userId": id },
+                { $set: { "players.$.isReady": ready } },
+                { new: true }
+            )
+            .then(updatedRoom => {
+                if (!updatedRoom) {
+                    return res.status(404).json({ error: 'User is not a player in this room' });
+                }
+                return res.status(200).json(updatedRoom);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        });
+};
+
+exports.startGame = (req, res) => {
+    const roomId = req.params.id;
+    const userId = req.userInfo.id;
+    roomModel.findById(roomId)
+        .then(room => {
+            if (!room) {
+                return res.status(404).send('Room not found');
+            }
+
+            const currentUser = room.players.find(p => p.userId.toString() === userId.toString());
+            if (!currentUser || !currentUser.isHost) {
+                return res.status(403).json({ message: 'Only the host can start the game' });
+            }
+
+            const allReady = room.players.every(p => p.isReady === true);
+            if (!allReady) {
+                return res.status(400).json({ message: 'All players must be ready before starting' });
+            }
+
+            if (room.players.length < 6) {
+                return res.status(400).json({ message: 'At least 6 players are required to start' });
+            }       
+            room.status = 'playing';
+            return room.save();
+        })
+        .then(updatedRoom => {
+            if (!updatedRoom || res.headersSent) return;
+
+            const responseData = {
+                code: updatedRoom.code,
+                name: updatedRoom.name,
+                gameMode: updatedRoom.gameMode,
+                numbOfPlayers: updatedRoom.numbOfPlayers,
+                players: updatedRoom.players.map(p => ({
+                    id: p.userId,
+                    userName: p.name,
+                    imageUrl: p.imageUrl
+                }))
+            };
+
+                return res.status(200).json(responseData);
+            })
+            .catch(err => {
+                console.error(err);
+                res.status(500).send('Internal Server Error');
+            });
 };
 
 exports.removePlayer = (req, res) => {
@@ -194,6 +261,10 @@ exports.removePlayer = (req, res) => {
             if (!room) {
                 return res.status(404).send('Room not found');
             }
+            if(room.status == 'playing') {
+                res.status(400).send('Game is already started');
+                return null;
+            }
             const playerToRemove = room.players.find(p => p.userId === userId);
             if (!playerToRemove) {
                 return res.status(404).send('Player not found in this room');
@@ -202,7 +273,6 @@ exports.removePlayer = (req, res) => {
             if (playerToRemove.isHost) {
                 return roomModel.findByIdAndDelete(id)
                     .then(() => {
-                        sendRoomDeletedEvent(req, id);
                         return res.status(200).json({ message: 'Room deleted because the host left' });
                     });
             } else {
@@ -210,10 +280,7 @@ exports.removePlayer = (req, res) => {
                     id,
                     { $pull: { players: { userId: userId } } },
                     { new: true }
-                ).then(doc => {
-                    sendPlayerLeftEvent(req, id)
-                    res.json(doc);
-                });
+                ).then(doc => res.json(doc));
             }
         })
         .catch(err => {

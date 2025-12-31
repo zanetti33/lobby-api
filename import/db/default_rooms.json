@@ -11,7 +11,8 @@
       "isReady": true
     }
   ],
-  "roomCapacity": 8
+  "roomCapacity": 8,
+  "status": "waiting"
 }
 {
     "code": "AB234",
@@ -40,5 +41,6 @@
       "isReady": false
     }
   ],
-    "roomCapacity": 6
+    "roomCapacity": 6,
+    "status": "playing"
 }
