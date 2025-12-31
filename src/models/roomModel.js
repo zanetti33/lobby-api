@@ -16,7 +16,13 @@ const roomSchema = new mongoose.Schema({
         isReady: { type: Boolean, default: false },
         _id: false // Evita di creare un _id per ogni singolo oggetto giocatore nel vettore
     }],
-    roomCapacity: {type: Number, required: true}
+    roomCapacity: {type: Number, required: true, min: 6, max: 12},
+    status: { 
+        type: String, 
+        enum: ['waiting', 'playing'], 
+        default: 'waiting',
+        required: true 
+    }
 }, {
     versionKey: false
 });

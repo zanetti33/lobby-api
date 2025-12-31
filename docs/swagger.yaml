@@ -125,6 +125,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Room'
+        400:
+          description: Game is already started
         403:
           description: Room already full
         404:
@@ -163,9 +165,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/Room'
         400:
+          description: Game is already started
+        403:
           description: Missing parameter
         404:
           description: Room or User not found
+        500:
+          description: Internal Server Error
+  /rooms/{id}/start:
+    post:
+      summary: Starts the game
+      description: Allows the host to start the game if all players are ready and the number of players is between 6 and 12. Changes the room state to 'playing'.
+      tags:
+        - Game
+      security:
+          - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Id of the room
+      responses:
+        200:
+          description: Game started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomPlaying'  
+        400:
+          description: Validation Error (Payers not ready or numberOfPlayers insufficient)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "At least 6 players are required to start"
+        403:
+          description: Access denied (user is not the host)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Only the host can start the game"
+        404:
+          description: Room not found
+        500:
+          description: Internal Server Error
   /rooms/{id}/players/{userId}:
     delete:
       summary: Removes a player from the room
@@ -197,6 +249,8 @@ paths:
                       message:
                         type: string
                         example: "Room deleted because the host left"
+        400:
+          description: Game is already started
         404:
           description: Room or User not found
 
@@ -280,3 +334,33 @@ components:
           minimum: 2
           maximum: 10
           example: 4
+    
+    RoomPlaying:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "X8Y2Z"
+        name:
+          type: string
+          example: "Pro Players Only"
+        gameMode:
+          type: string
+          enum: [classic, advanced]
+        numbOfPlayers:
+          type: integer
+          example: 8
+        players:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "user_12345"
+              userName:
+                type: string
+                example: "MarioRossi"
+              imageUrl:
+                type: string
+                example: "http://example.com/avatar.jpg"

@@ -14,6 +14,9 @@ router.route('/rooms/:id/players')
     .post(controller.addPlayer)
     .put(controller.isReady);
 
+router.route('/rooms/:id/start')
+    .post(controller.startGame);
+
 router.route('/rooms/:id/players/:userId')
     .delete(controller.removePlayer);
 
