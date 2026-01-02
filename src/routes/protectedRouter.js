@@ -12,6 +12,7 @@ router.route('/rooms/:id')
 
 router.route('/rooms/:id/players')
     .post(controller.addPlayer)
+    .delete(controller.removePlayer)
     .put(controller.isReady);
 
 router.route('/rooms/:id/start')

@@ -1,5 +1,1 @@
-- In "join room" mandare l'evento agli altri giocatori sulla socket e ritornare l'elenco dei giocatori me compreso così da vederli subito ad interfaccia
-- Inserire su db anche il giocatore oltre alla stanza in caso di "create room" o "join room"
-- Avere un modo di identificare chi è il "capo" della stanza e può premere inizia
-- All'inizio di una partita salvare le informazioni su db in modo da poter avvisare eventuali giocatori che entrano in partita ma non sono ancora sulla socket
-
+- in DELETE /rooms/{roomId}/players/{playerId} non c'è nessun check su chi cerca di rimuovere un giocare. Ogni giocatore può rimuovere chiunque altro

@@ -249,7 +249,7 @@ exports.removePlayer = (req, res) => {
     const { id } = req.params; // roomId
     let { userId } = req.params;
     //If the userId is not provided
-    if (userId == '{userId}') {
+    if (!userId) {
         userId = req.userInfo.id;
     }
 
