@@ -14,7 +14,7 @@ const { roomSocket } = require('./src/socket/roomSocket');
 // env variables
 const connectionString = process.env.MONGO_URI || 'mongodb://localhost:27017/lobby';
 const isDebug = process.env.NODE_ENV == 'debug';
-const port = process.env.PORT || 3001;
+const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // Swagger setup
 const swaggerDocument = yaml.load(path.join(__dirname, './docs/swagger.yaml'));
@@ -25,7 +25,7 @@ mongoose.connect(connectionString);
 // Server setup
 const app = express();
 const corsOptions = {
-    origin: 'http://localhost:5173',
+    origin: allowedOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -67,7 +67,4 @@ io.on("connection", roomSocket);
 // Protected API routes
 app.use('/', protectedRouter);
 
-httpServer.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-    console.log(`Swagger UI is available at http://localhost:${port}/api-docs`);
-});
+httpServer.listen(port, () => console.log("Server started"));

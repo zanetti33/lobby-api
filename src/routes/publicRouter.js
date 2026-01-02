@@ -7,4 +7,9 @@ router.route('/rooms')
     .post(controller.listRooms);
 */
 
+router.route("/")
+    .get((_, res) => {
+        res.redirect(301, '/api-docs');
+    });
+
 module.exports = router;

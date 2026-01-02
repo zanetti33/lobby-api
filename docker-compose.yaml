@@ -1,6 +1,6 @@
 services:
   # the actual db
-  mongo:
+  lobby-mongo:
     image: mongo
     container_name: lobby-mongodb-container
     restart: always
@@ -10,14 +10,14 @@ services:
       - lobby-internal-net
 
   # the management interface to the db 
-  mongo-express:
+  lobby-mongo-express:
     depends_on:
-      - mongo
+      - lobby-mongo
     image: mongo-express
     restart: always
     ports:
       # for development purposes only
-      - 8081:8081
+      - ${LOBBY_DB_UI_PORT:-8081}:8081
     networks:
       - lobby-internal-net 
     environment:
@@ -26,13 +26,13 @@ services:
       ME_CONFIG_BASICAUTH: false
 
   # the api built on top of the db
-  frontend:
+  lobby-frontend:
     build: .
     container_name: lobby-api
     depends_on:
-      - mongo
+      - lobby-mongo
     ports:
-      - ${PORT}:${PORT}
+      - ${LOBBY_API_PORT}:${LOBBY_API_PORT}
     networks:
       - lobby-internal-net
       - town-of-saviom-shared-net
@@ -43,8 +43,9 @@ services:
       # production or debug
       - NODE_ENV=debug
       # auth-service container url
-      - AUTH_SERVICE_URL=http://login-api:${LOGIN_API_PORT}
-      - PORT=${PORT}
+      - AUTH_SERVICE_URL=#{AUTH_SERVICE_URL}
+      # origin url accepted by cors
+      - CORS_ORIGIN=http://localhost:5173
 
 networks:
   lobby-internal-net:
