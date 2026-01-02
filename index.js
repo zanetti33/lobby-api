@@ -67,4 +67,4 @@ io.on("connection", roomSocket);
 // Protected API routes
 app.use('/', protectedRouter);
 
-httpServer.listen(port, () => console.log("Server started"));
+httpServer.listen(3000, () => console.log("Server started"));

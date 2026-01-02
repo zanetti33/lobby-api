@@ -32,7 +32,7 @@ services:
     depends_on:
       - lobby-mongo
     ports:
-      - ${LOBBY_API_PORT}:${LOBBY_API_PORT}
+      - ${LOBBY_API_PORT}:3000
     networks:
       - lobby-internal-net
       - town-of-saviom-shared-net
