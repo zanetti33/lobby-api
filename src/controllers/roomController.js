@@ -222,28 +222,51 @@ exports.startGame = (req, res) => {
             room.status = 'playing';
             return room.save();
         })
-        .then(updatedRoom => {
+        .then(async updatedRoom => {
             if (!updatedRoom || res.headersSent) return;
 
-            const responseData = {
-                code: updatedRoom.code,
-                name: updatedRoom.name,
-                gameMode: updatedRoom.gameMode,
-                numbOfPlayers: updatedRoom.numbOfPlayers,
-                players: updatedRoom.players.map(p => ({
-                    id: p.userId,
-                    userName: p.name,
-                    imageUrl: p.imageUrl
-                }))
-            };
+            try {
+                const responseGameData = await submitGameStart(updatedRoom);
+
+                // decide what to add from game info
+                const resonseData = {
+                    code: updatedRoom.code,
+                    name: updatedRoom.name,
+                    gameMode: updatedRoom.gameMode,
+                    numbOfPlayers: updatedRoom.numbOfPlayers,
+                    players: updatedRoom.players.map(p => ({
+                        id: p.userId,
+                        userName: p.name,
+                        imageUrl: p.imageUrl
+                    }))
+                };
 
                 return res.status(200).json(responseData);
-            })
-            .catch(err => {
-                console.error(err);
-                res.status(500).send('Internal Server Error');
-            });
+            } catch (err) {
+                await roomModel.findByIdAndUpdate(roomId, { status: 'waiting' });
+                return res.status(502);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).send('Internal Server Error');
+        });
 };
+
+submitGameStart = async (gameData) => {
+    try {
+        const response = await axios.post(process.env.GAME_SERVICE_URL, gameData, {
+            headers: {
+                // This identifies the Lobby Service to the Game Engine
+                'x-internal-service-id': process.env.LOBBY_X_INTERNAL_SERVICE_ID ,
+                'x-internal-secret': process.env.X_INTERNAL_SECRET 
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to trigger Game Engine", error);
+    }
+}
 
 exports.removePlayer = (req, res) => {
     const { id } = req.params; // roomId
