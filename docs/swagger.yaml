@@ -251,6 +251,8 @@ paths:
                         example: "Room deleted because the host left"
         400:
           description: Game is already started
+        403:
+          description: Unauthorized (Only the host can remove other players)
         404:
           description: Room or User not found
 
