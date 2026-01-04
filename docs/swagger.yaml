@@ -221,7 +221,7 @@ paths:
   /rooms/{id}/players/{userId}:
     delete:
       summary: Removes a player from the room
-      description: if the userID is not provided, it removes the logged user. If the removed player is the host, the room is deleted.
+      description: If the caller is not the host it can't remove other palyer besides himself, if the userID is not provided, it removes the logged user. If the removed player is the host, the room is deleted.
       tags:
         - Players
       security:
@@ -251,6 +251,8 @@ paths:
                         example: "Room deleted because the host left"
         400:
           description: Game is already started
+        403:
+          description: Unauthorized (Only the host can remove other players)
         404:
           description: Room or User not found
 
