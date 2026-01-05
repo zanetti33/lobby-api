@@ -1,5 +1,7 @@
 const { roomModel } = require('../models/roomModel');
 const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent } = require('../socket/roomSocket');
+const axios = require('axios');
+const isDebug = process.env.NODE_ENV == 'debug';
 
 exports.listRooms = (req, res) => {
     const identifier = req.query.codeOrName;
@@ -255,7 +257,11 @@ exports.startGame = (req, res) => {
 
 submitGameStart = async (gameData) => {
     try {
-        const response = await axios.post(process.env.GAME_SERVICE_URL, gameData, {
+        if (isDebug) {
+            console.log(process.env.LOBBY_X_INTERNAL_SERVICE_ID);
+            console.log(process.env.X_INTERNAL_SECRET);
+        }
+        const response = await axios.post(process.env.GAME_SERVICE_URL + "/games", gameData, {
             headers: {
                 // This identifies the Lobby Service to the Game Engine
                 'x-internal-service-id': process.env.LOBBY_X_INTERNAL_SERVICE_ID ,

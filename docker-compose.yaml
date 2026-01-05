@@ -46,9 +46,10 @@ services:
       - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
       # origin url accepted by cors
       - CORS_ORIGIN=${CORS_ORIGIN}
-      # game-service conatiner url
+      # game-service conatiner url (needed to start games)
       - GAME_SERVICE_URL=${GAME_SERVICE_URL}
       # info for internal network use
+      # my credentials to send data to gameplay service
       - LOBBY_X_INTERNAL_SERVICE_ID=${LOBBY_X_INTERNAL_SERVICE_ID}
       - X_INTERNAL_SECRET=${X_INTERNAL_SECRET}
 
