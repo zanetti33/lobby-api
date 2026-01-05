@@ -275,11 +275,12 @@ submitGameStart = async (gameData) => {
 }
 
 exports.removePlayer = (req, res) => {
-    const { id } = req.params; // roomId
-    let { userId } = req.params;
+    const { id } = req.params; //roomId
+    let { userId } = req.params; //player to remove
+    const callerId = req.userInfo.id; //API caller
     //If the userId is not provided
     if (!userId) {
-        userId = req.userInfo.id;
+        userId = callerId;
     }
 
     roomModel.findById(id)
@@ -287,15 +288,21 @@ exports.removePlayer = (req, res) => {
             if (!room) {
                 return res.status(404).send('Room not found');
             }
-            if(room.status == 'playing') {
-                res.status(400).send('Game is already started');
-                return null;
+            if (room.status == 'playing') {
+                return res.status(400).send('Game is already started');
             }
+            const caller = room.players.find(p => p.userId === callerId);
             const playerToRemove = room.players.find(p => p.userId === userId);
             if (!playerToRemove) {
                 return res.status(404).send('Player not found in this room');
             }
-            //Se il giocatore è l'host, cancelliamo l'intera stanza
+            //only the host can remove other players otherwise a player can only remove himself
+            const isCallerHost = caller && caller.isHost;
+            const isSelfRemoval = callerId === userId;
+            if (!isCallerHost && !isSelfRemoval) {
+                return res.status(403).send('Unauthorized (Only the host can remove other players)');
+            }
+            //if playerToRemove is the Host, the room is deleted
             if (playerToRemove.isHost) {
                 return roomModel.findByIdAndDelete(id)
                     .then(() => {
@@ -309,7 +316,8 @@ exports.removePlayer = (req, res) => {
                     { new: true }
                 ).then(doc => {
                     sendPlayerLeftEvent(req, id);
-                    res.json(doc)});
+                    res.json(doc);
+                });
             }
         })
         .catch(err => {
