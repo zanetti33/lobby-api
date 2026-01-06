@@ -226,24 +226,13 @@ exports.startGame = (req, res) => {
         })
         .then(async updatedRoom => {
             if (!updatedRoom || res.headersSent) return;
-
             try {
+                // send info to gameplay-service to start the game
                 const responseGameData = await submitGameStart(updatedRoom);
-
-                // decide what to add from game info
-                const resonseData = {
-                    code: updatedRoom.code,
-                    name: updatedRoom.name,
-                    gameMode: updatedRoom.gameMode,
-                    numbOfPlayers: updatedRoom.numbOfPlayers,
-                    players: updatedRoom.players.map(p => ({
-                        id: p.userId,
-                        userName: p.name,
-                        imageUrl: p.imageUrl
-                    }))
-                };
-
-                return res.status(200).json(responseData);
+                // send the "GAME_STARTED" event to the players listening on the room socket
+                sendGameStartedEvent(req, roomId, responseGameData);
+                // return OK!
+                return res.sendStatus(200);
             } catch (err) {
                 await roomModel.findByIdAndUpdate(roomId, { status: 'waiting' });
                 return res.status(502);

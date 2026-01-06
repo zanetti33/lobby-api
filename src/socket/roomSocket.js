@@ -1,7 +1,8 @@
 const { roomModel } = require('../models/roomModel');
+const isDebug = process.env.NODE_ENV == 'debug';
 
 exports.roomSocket = (socket) => {
-    console.log(`User Connected: ${socket.userInfo.name} (${socket.userInfo.id})`);
+    log(`User Connected: ${socket.userInfo.name} (${socket.userInfo.id})`);
 
     registerJoinLobbyHandler(socket);
     //registerSendMessageHandler(io, socket);
@@ -11,7 +12,7 @@ exports.roomSocket = (socket) => {
 // EVENT: User Disconnects
 registerDisconnectHandler = (socket) => {
     socket.on("disconnecting", () => {
-        console.log(`User Disconnected: ${socket.userInfo.name}`);
+        log(`User Disconnected: ${socket.userInfo.name}`);
         // socket.rooms is a Set containing the socket ID and the rooms they joined
         const rooms = socket.rooms;
 
@@ -42,14 +43,14 @@ registerJoinLobbyHandler = (socket) => {
             });
 
             if (!room) {
-                console.warn(`Security Alert: User ${userId} tried to join room ${roomId} but is not in DB.`);
+                log(`Security Alert: User ${userId} tried to join room ${roomId} but is not in DB.`);
                 socket.emit("ERROR", { message: "Unauthorized to join this room." });
                 return; 
             }
 
             // Actually Join the Socket Room
             socket.join(roomId);
-            console.log(`Allowed ${socket.userInfo.name} to join socket channel ${roomId}`);
+            log(`Allowed ${socket.userInfo.name} to join socket channel ${roomId}`);
 
             // (Optional) Sync Game State
             // If the user refreshed the page, they might need the current game state immediately
@@ -73,13 +74,13 @@ exports.sendPlayerLeftEvent = (req, roomId) => {
     io.to(roomId).emit("PLAYER_LEFT", {
         id: userId
     });
-    console.log(`Socket event PLAYER_LEFT (User: ${userId}) sent to room ${roomId}`);
+    log(`Socket event PLAYER_LEFT (User: ${userId}) sent to room ${roomId}`);
 }
 
 exports.sendRoomDeletedEvent = (req, roomId) => {
     const io = req.app.get('io');
     io.to(roomId).emit("ROOM_DELETED");
-    console.log(`Socket event ROOM_DELETED sent to room ${roomId}`);
+    log(`Socket event ROOM_DELETED sent to room ${roomId}`);
     io.in(roomId).disconnectSockets(true);
 }
 
@@ -91,7 +92,19 @@ exports.sendPlayerJoinedEvent = (req, roomId) => {
         name: name,
         imageUrl: imageUrl
     });
-    console.log(`Socket event PLAYER_JOINED (User: ${id}) sent to room ${roomId}`);
+    log(`Socket event PLAYER_JOINED (User: ${id}) sent to room ${roomId}`);
+}
+
+exports.sendGameStartedEvent = (req, roomId, data) => {
+    const io = req.app.get('io');
+    io.to(roomId).emit("GAME_STARTED", data);
+    log(`Socket event GAME_STARTED (User: ${id}) sent to room ${roomId}`);
+}
+
+log = (message) => {
+    if (isDebug) {
+        console.log(message);
+    }
 }
 
 // Next features
