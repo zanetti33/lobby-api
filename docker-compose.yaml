@@ -2,7 +2,6 @@ services:
   # the actual db
   lobby-mongo:
     image: mongo
-    container_name: lobby-mongodb-container
     restart: always
     volumes:
       - ./import:/docker-entrypoint-initdb.d:ro
@@ -21,9 +20,10 @@ services:
     networks:
       - lobby-internal-net 
     environment:
-      ME_CONFIG_MONGODB_SERVER: lobby-mongodb-container
+      - ME_CONFIG_MONGODB_URL=mongodb://lobby-mongo:27017/
+      - ME_CONFIG_MONGODB_SERVER=lobby-mongo
       # TODO: use auth to access this or remove entirely on deploy
-      ME_CONFIG_BASICAUTH: false
+      - ME_CONFIG_BASICAUTH=false
 
   # the api built on top of the db
   lobby-frontend:
@@ -39,7 +39,7 @@ services:
     environment:
       # mongodb-container -> nome container del db
       # lobby -> nome del db
-      - MONGO_URI=mongodb://lobby-mongodb-container:27017/lobby
+      - MONGO_URI=mongodb://lobby-mongo:27017/lobby
       # production or debug
       - NODE_ENV=${NODE_ENV}
       # auth-service container url

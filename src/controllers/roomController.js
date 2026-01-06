@@ -1,5 +1,5 @@
 const { roomModel } = require('../models/roomModel');
-const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent } = require('../socket/roomSocket');
+const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent, sendGameStartedEvent } = require('../socket/roomSocket');
 const axios = require('axios');
 const isDebug = process.env.NODE_ENV == 'debug';
 
@@ -232,7 +232,7 @@ exports.startGame = (req, res) => {
                 // send the "GAME_STARTED" event to the players listening on the room socket
                 sendGameStartedEvent(req, roomId, responseGameData);
                 // return OK!
-                return res.sendStatus(200);
+                return res.sendStatus(204);
             } catch (err) {
                 await roomModel.findByIdAndUpdate(roomId, { status: 'waiting' });
                 return res.status(502);
@@ -245,22 +245,20 @@ exports.startGame = (req, res) => {
 };
 
 submitGameStart = async (gameData) => {
-    try {
-        if (isDebug) {
-            console.log(process.env.LOBBY_X_INTERNAL_SERVICE_ID);
-            console.log(process.env.X_INTERNAL_SECRET);
+    log(process.env.LOBBY_X_INTERNAL_SERVICE_ID);
+    log(process.env.X_INTERNAL_SECRET);
+    const response = await axios.post(process.env.GAME_SERVICE_URL + "/games", gameData, {
+        headers: {
+            // This identifies the Lobby Service to the Game Engine
+            'x-internal-service-id': process.env.LOBBY_X_INTERNAL_SERVICE_ID ,
+            'x-internal-secret': process.env.X_INTERNAL_SECRET 
         }
-        const response = await axios.post(process.env.GAME_SERVICE_URL + "/games", gameData, {
-            headers: {
-                // This identifies the Lobby Service to the Game Engine
-                'x-internal-service-id': process.env.LOBBY_X_INTERNAL_SERVICE_ID ,
-                'x-internal-secret': process.env.X_INTERNAL_SECRET 
-            }
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Failed to trigger Game Engine", error);
+    });
+    if (response.status !== 201) {
+        log(response);
+        throw new Error("Could start new game");
     }
+    return response.data;
 }
 
 exports.removePlayer = (req, res) => {

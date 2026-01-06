@@ -188,12 +188,8 @@ paths:
             type: string
           description: Id of the room
       responses:
-        200:
+        204:
           description: Game started successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RoomPlaying'  
         400:
           description: Validation Error (Payers not ready or numberOfPlayers insufficient)
           content:

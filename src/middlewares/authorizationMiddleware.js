@@ -1,4 +1,5 @@
 const {validateToken} = require('../services/authorizationService');
+const isDebug = process.env.NODE_ENV == 'debug';
 
 exports.authorize = async (req, res, next) => {
     // If the request is for Socket.io, skip this middleware
@@ -6,7 +7,9 @@ exports.authorize = async (req, res, next) => {
         return next();
     }
     const authHeader = req.headers['authorization']
-    console.log(authHeader);
+    if (isDebug) {
+        console.log(`[DEBUG] ${authHeader}`);
+    }
     // Header format is: "Bearer <token>"
     const token = authHeader && authHeader.split(' ')[1];
 
