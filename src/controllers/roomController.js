@@ -164,12 +164,7 @@ exports.addPlayer = async (req, res) => {
 
 exports.isReady = (req, res) => {
     const { id } = req.userInfo;
-    const { ready } = req.body;
     const roomId = req.params.id;
-
-    if (ready === '{ready}') {
-        return res.status(400).json({ error: 'Missing "ready" parameter' });
-    }
 
     roomModel.findById(roomId)
         .then(room => {
@@ -179,17 +174,30 @@ exports.isReady = (req, res) => {
             if (room.status === 'playing') {
                 return res.status(400).json({ error: 'Game is already started' });
             }
+
             return roomModel.findOneAndUpdate(
                 { _id: roomId, "players.userId": id },
-                { $set: { "players.$.isReady": ready } },
+                [{$set: {
+                        players: {$map: {
+                                    input: "$players",
+                                    as: "p",
+                                    in: {$cond: [
+                                            { $eq: ["$$p.userId", id] },
+                                            // Se l'ID coincide, inverte isReady
+                                            { $mergeObjects: ["$$p", { isReady: { $not: "$$p.isReady" } } ] },
+                                            // Altrimenti lascia il player così com'è
+                                            "$$p"
+                                        ]}
+                                }}
+                        }}],
                 { new: true }
-            )
-            .then(updatedRoom => {
-                if (!updatedRoom) {
-                    return res.status(404).json({ error: 'User is not a player in this room' });
-                }
-                return res.status(200).json(updatedRoom);
-            });
+            );
+        })
+        .then(updatedRoom => {
+            if (!updatedRoom) {
+                return res.status(404).json({ error: 'User is not a player in this room' });
+            }
+            return res.status(200).json(updatedRoom);
         })
         .catch(err => {
             console.error(err);

@@ -147,16 +147,6 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                ready:
-                  type: boolean
-                  example: true
       responses:
         200:
           description: State updated successfully
@@ -166,8 +156,6 @@ paths:
                 $ref: '#/components/schemas/Room'
         400:
           description: Game is already started
-        403:
-          description: Missing parameter
         404:
           description: Room or User not found
         500:
