@@ -6,7 +6,7 @@
     {
       "userId": "694aa74d8c5076c9f3c2cd2c",
       "name": "Marco_Dev",
-      "imageUrl": "werewolf.png",
+      "imageUrl": "princess.png",
       "isHost": true,
       "isReady": true
     }
@@ -29,7 +29,7 @@
     {
       "userId": "de71274d8c5076c9f3c2cd2c",
       "name": "Luca_99",
-      "imageUrl": "werewolf.png",
+      "imageUrl": "soldier.png",
       "isHost": false,
       "isReady": true
     },
@@ -52,28 +52,28 @@
     {
       "userId": "1",
       "name": "test1",
-      "imageUrl": "werewolf.png",
+      "imageUrl": "king.png",
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "2",
       "name": "test2",
-      "imageUrl": "werewolf.png",
+      "imageUrl": "default.png",
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "3",
       "name": "test3",
-      "imageUrl": "werewolf.png",
+      "imageUrl": null,
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "4",
       "name": "test4",
-      "imageUrl": "werewolf.png",
+      "imageUrl": null,
       "isHost": true,
       "isReady": true
     }
