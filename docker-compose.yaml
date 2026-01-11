@@ -26,9 +26,8 @@ services:
       - ME_CONFIG_BASICAUTH=false
 
   # the api built on top of the db
-  lobby-frontend:
+  lobby-api:
     build: .
-    container_name: lobby-api
     depends_on:
       - lobby-mongo
     ports:
