@@ -6,7 +6,7 @@
     {
       "userId": "694aa74d8c5076c9f3c2cd2c",
       "name": "Marco_Dev",
-      "imageUrl": "princess.png",
+      "imageUrl": "princess.svg",
       "isHost": true,
       "isReady": true
     }
@@ -29,7 +29,7 @@
     {
       "userId": "de71274d8c5076c9f3c2cd2c",
       "name": "Luca_99",
-      "imageUrl": "soldier.png",
+      "imageUrl": "soldier.svg",
       "isHost": false,
       "isReady": true
     },
@@ -52,14 +52,14 @@
     {
       "userId": "1",
       "name": "test1",
-      "imageUrl": "king.png",
+      "imageUrl": "king.svg",
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "2",
       "name": "test2",
-      "imageUrl": "default.png",
+      "imageUrl": "default.svg",
       "isHost": true,
       "isReady": true
     },
