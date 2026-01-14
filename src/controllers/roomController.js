@@ -1,5 +1,5 @@
 const { roomModel } = require('../models/roomModel');
-const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent, sendGameStartedEvent } = require('../socket/roomSocket');
+const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent, sendGameStartedEvent, sendPlayerIsReadyEvent } = require('../socket/roomSocket');
 const axios = require('axios');
 const isDebug = process.env.NODE_ENV == 'debug';
 
@@ -197,6 +197,17 @@ exports.isReady = (req, res) => {
             if (!updatedRoom) {
                 return res.status(404).json({ error: 'User is not a player in this room' });
             }
+
+            let isPlayerReady = null;
+            for (index in updatedRoom.players) {
+                if (updatedRoom.players[index].userId === id){
+                    isPlayerReady = updatedRoom.players[index].isReady;
+                    break;
+                }
+            }
+            //Emit socket event
+            sendPlayerIsReadyEvent(req, roomId, {userId: id, isReady: isPlayerReady});
+
             return res.status(200).json(updatedRoom);
         })
         .catch(err => {
