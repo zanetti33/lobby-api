@@ -198,16 +198,10 @@ exports.isReady = (req, res) => {
                 return res.status(404).json({ error: 'User is not a player in this room' });
             }
 
-            let isPlayerReady = null;
-            for (index in updatedRoom.players) {
-                if (updatedRoom.players[index].userId === id){
-                    isPlayerReady = updatedRoom.players[index].isReady;
-                    break;
-                }
-            }
+            const currentUser = updatedRoom.players.find(p => p.userId.toString() === id.toString());
+            const isPlayerReady = currentUser.isReady;
             //Emit socket event
             sendPlayerIsReadyEvent(req, roomId, {userId: id, isReady: isPlayerReady});
-
             return res.status(200).json(updatedRoom);
         })
         .catch(err => {
@@ -275,7 +269,7 @@ submitGameStart = async (gameData) => {
     });
     if (response.status !== 201) {
         log(response);
-        throw new Error("Could start new game");
+        throw new Error("Could not start new game");
     }
     return response.data;
 }

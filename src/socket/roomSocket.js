@@ -72,7 +72,7 @@ exports.sendPlayerLeftEvent = (req, roomId) => {
     const io = req.app.get('io');
     const userId = req.userInfo.id;
     io.to(roomId).emit("PLAYER_LEFT", {
-        id: userId
+        userId: userId
     });
     log(`Socket event PLAYER_LEFT (User: ${userId}) sent to room ${roomId}`);
 }
@@ -104,7 +104,7 @@ exports.sendPlayerIsReadyEvent = (req, roomId, data) => {
 exports.sendGameStartedEvent = (req, roomId, data) => {
     const io = req.app.get('io');
     io.to(roomId).emit("GAME_STARTED", data);
-    log(`Socket event GAME_STARTED (User: ${id}) sent to room ${roomId}`);
+    log(`Socket event GAME_STARTED sent to room ${roomId}`);
 }
 
 log = (message) => {
