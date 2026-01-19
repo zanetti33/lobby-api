@@ -101,6 +101,12 @@ exports.sendPlayerIsReadyEvent = (req, roomId, data) => {
     log(`Socket event PLAYER_READY (User: ${data.userId}) sent to room ${roomId}`);
 }
 
+exports.sendPlayerKickedEvent = (req, roomId, data) => {
+    const io = req.app.get('io');
+    io.to(roomId).emit("PLAYER_KICKED", data);
+    log(`Socket event PLAYER_KICKED (User: ${data.userId}) sent to room ${roomId}`);
+}
+
 exports.sendGameStartedEvent = (req, roomId, data) => {
     const io = req.app.get('io');
     io.to(roomId).emit("GAME_STARTED", data);
