@@ -1,5 +1,5 @@
 const { roomModel } = require('../models/roomModel');
-const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent, sendGameStartedEvent, sendPlayerIsReadyEvent } = require('../socket/roomSocket');
+const { sendRoomDeletedEvent, sendPlayerLeftEvent, sendPlayerJoinedEvent, sendGameStartedEvent, sendPlayerIsReadyEvent, sendPlayerKickedEvent } = require('../socket/roomSocket');
 const axios = require('axios');
 const isDebug = process.env.NODE_ENV == 'debug';
 
@@ -315,7 +315,11 @@ exports.removePlayer = (req, res) => {
                     { $pull: { players: { userId: userId } } },
                     { new: true }
                 ).then(doc => {
-                    sendPlayerLeftEvent(req, id);
+                    if(userId !== callerId) {
+                        sendPlayerKickedEvent(req, id, { userId: userId });
+                    } else {
+                        sendPlayerLeftEvent(req, id);
+                    }
                     res.json(doc);
                 });
             }
