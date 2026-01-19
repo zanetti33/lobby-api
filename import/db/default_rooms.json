@@ -52,21 +52,21 @@
     {
       "userId": "000000000000000000000001",
       "name": "test1",
-      "imageUrl": "king.svg",
+      "imageUrl": "soldier.svg",
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "000000000000000000000002",
       "name": "test2",
-      "imageUrl": "default.svg",
+      "imageUrl": "jocker.svg",
       "isHost": true,
       "isReady": true
     },
     {
       "userId": "000000000000000000000003",
       "name": "test3",
-      "imageUrl": null,
+      "imageUrl": "king.svg",
       "isHost": true,
       "isReady": true
     },
