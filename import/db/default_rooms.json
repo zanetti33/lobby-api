@@ -50,28 +50,28 @@
     "gameMode": "advanced",
     "players": [
     {
-      "userId": "1",
+      "userId": "000000000000000000000001",
       "name": "test1",
       "imageUrl": "king.svg",
       "isHost": true,
       "isReady": true
     },
     {
-      "userId": "2",
+      "userId": "000000000000000000000002",
       "name": "test2",
       "imageUrl": "default.svg",
       "isHost": true,
       "isReady": true
     },
     {
-      "userId": "3",
+      "userId": "000000000000000000000003",
       "name": "test3",
       "imageUrl": null,
       "isHost": true,
       "isReady": true
     },
     {
-      "userId": "4",
+      "userId": "000000000000000000000004",
       "name": "test4",
       "imageUrl": null,
       "isHost": true,
