@@ -41,3 +41,21 @@ exports.socketAuthorize = async (socket, next) => {
     }
     next();
 };
+
+exports.internalAuthorize = async (req, res, next) => {
+    const internalSecret = req.headers['x-internal-secret'];
+    const internalServiceId = req.headers['x-internal-service-id'];
+
+    log(internalServiceId);
+    log(internalSecret);
+
+    if (!internalSecret || !internalServiceId) {
+        return res.sendStatus(401);
+    }
+
+    if (internalServiceId != process.env.GAMEPLAY_X_INTERNAL_SERVICE_ID || internalSecret != process.env.X_INTERNAL_SECRET) {
+        return res.sendStatus(403);
+    }
+
+    next();
+}

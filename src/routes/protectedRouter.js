@@ -7,8 +7,7 @@ router.route('/rooms')
     .post(controller.createRoom);
 
 router.route('/rooms/:id')
-    .get(controller.getRoom)
-    .delete(controller.deleteRoom);
+    .get(controller.getRoom);
 
 router.route('/rooms/:id/players')
     .post(controller.addPlayer)

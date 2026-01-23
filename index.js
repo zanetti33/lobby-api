@@ -8,6 +8,7 @@ const swaggerUi = require('swagger-ui-express');
 const { Server } = require("socket.io");
 const protectedRouter = require('./src/routes/protectedRouter');
 const publicRouter = require('./src/routes/publicRouter');
+const roomController = require('./src/controllers/roomController');
 const authorizationMiddleware = require('./src/middlewares/authorizationMiddleware');
 const { roomSocket } = require('./src/socket/roomSocket');
 
@@ -58,6 +59,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Public API routes
 app.use('/', publicRouter);
+
+// Internal API routes
+app.delete('/rooms/:id', authorizationMiddleware.internalAuthorize, roomController.deleteRoom)
 
 // Authorization middleware
 io.use(authorizationMiddleware.socketAuthorize);
