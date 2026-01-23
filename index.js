@@ -39,6 +39,7 @@ app.options('*', cors(corsOptions));
 // Socket.io setup
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
+    path: isDebug ? '/socket.io' : '/api/lobby/socket.io',
     cors: corsOptions
 });
 app.set('io', io);
