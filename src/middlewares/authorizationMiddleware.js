@@ -27,16 +27,17 @@ exports.authorize = async (req, res, next) => {
 };
 
 exports.socketAuthorize = async (socket, next) => {
-    const token = socket.handshake.auth.token;
-
+    const token = socket.handshake.auth.token || socket.handshake.query.token; 
+    
+    log("[DEBUG] Token: " + token);
     if (!token) {
-        return next(new Error("Authentication error: Token missing"));
+        return res.sendStatus(401);
     }
-
     try {
         socket.userInfo = await validateToken(token);
-        next(); 
     } catch (err) {
-        return next(new Error("Authentication error: Invalid token"));
+        log(err);
+        return res.sendStatus(403);
     }
+    next();
 };
