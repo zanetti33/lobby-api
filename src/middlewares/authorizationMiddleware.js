@@ -27,7 +27,7 @@ exports.authorize = async (req, res, next) => {
 };
 
 exports.socketAuthorize = async (socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.query.token; 
+    const token = socket.handshake.auth.token; 
     
     log("[DEBUG] Token: " + token);
     if (!token) {
