@@ -51,52 +51,73 @@ const generateRandomCode = () => {
     return result;
 };
 
-exports.createRoom = (req, res) => {
-const { id, name, imageUrl } = req.userInfo;
+exports.createRoom = async (req, res) => {
+    const { id, name, imageUrl } = req.userInfo;
+    const { name: roomName, gameMode, roomCapacity } = req.body;
 
-    const attemptSave = () => {
-        const code = generateRandomCode();
+    // Validate Input First (Fail Fast)
+    if (!roomName || !gameMode || !roomCapacity) {
+        return res.status(400).send('Missing parameters');
+    }
 
-        roomModel.findOne({ code: code })
-            .then(existingCode => {
-                if (existingCode) return attemptSave(); //Se esiste, riprova
+    // Retry Logic (Loop instead of Recursion)
+    let retries = 0;
+    const MAX_RETRIES = 5;
 
-                const roomData = {
-                    code: code,
-                    name: req.body.name,
-                    gameMode: req.body.gameMode,
-                    roomCapacity: req.body.roomCapacity,
-                    players: [{
-                        userId: id,
-                        name: name,
-                        imageUrl: imageUrl,
-                        isHost: true,
-                        isReady: true
-                    }]
-                };
+    while (retries < MAX_RETRIES) {
+        try {
+            const code = generateRandomCode();
+            const existingRoom = await roomModel.findOne({ code: code });
+            
+            if (existingRoom) {
+                // Code taken, increment retry counter and loop again
+                retries++;
+                continue; 
+            }
 
-                const room = new roomModel(roomData);
-                if (!room.name || !room.gameMode || !room.roomCapacity) {
-                    return res.status(400).send('Missing parameters');
-                }
-
-                return room.save();
-            })
-            .then(doc => {
-                if (doc) res.status(201).json(doc);
-            })
-            .catch(err => {
-                if (err.code === 11000) {
-                     return res.status(409).send('Room Name already exists');
-                }
-                if (err.name === 'ValidationError') {
-                    return res.status(400).send(err.message);
-                }
-                res.status(500).send('Internal Server Error');
+            // Create and Save (if code or name are now duplicates we retries)
+            const room = new roomModel({
+                code,
+                name: roomName,
+                gameMode,
+                roomCapacity,
+                players: [{
+                    userId: id,
+                    name,
+                    imageUrl,
+                    isHost: true,
+                    isReady: true
+                }]
             });
-    };
 
-    attemptSave();
+            const savedRoom = await room.save();
+            return res.status(201).json(savedRoom);
+
+        } catch (err) {
+            if (err.code === 11000) {
+                // If the error is about the Name, stop immediately
+                if (err.keyPattern && err.keyPattern.name) {
+                    return res.status(409).send('Room Name already exists');
+                }
+                
+                // If the error is about the Code (rare race condition), retry
+                if (err.keyPattern && err.keyPattern.code) {
+                    retries++;
+                    continue;
+                }
+            }
+
+            // Handle Mongoose Validation Errors
+            if (err.name === 'ValidationError') {
+                return res.status(400).send(err.message);
+            }
+
+            console.error("Create Room Error:", err);
+            return res.status(500).send('Internal Server Error');
+        }
+    }
+    // If loop finishes without success
+    return res.status(500).send('Could not generate a unique room code. Please try again.');
 };
 
 exports.getRoom = (req, res) => {
@@ -116,9 +137,10 @@ exports.getRoom = (req, res) => {
 exports.addPlayer = async (req, res) => {
     const roomId = req.params.id;
     const { id, name, imageUrl } = req.userInfo;
+    const newPlayer = { userId: id, name, imageUrl };
 
     try {
-        // 1. Check if user is already in a room
+        // Check if user is already in a room
         const existingRoom = await roomModel.findOne({ "players.userId": id });
         if (existingRoom) {
             if (existingRoom._id.toString() === roomId) {
@@ -126,33 +148,31 @@ exports.addPlayer = async (req, res) => {
             }
             return res.status(409).send(`User already in a room (Code: ${existingRoom.code})`);
         }
-
-        // 2. Find the target room
-        const room = await roomModel.findById(roomId);
-        if (!room) {
-            return res.status(404).send('Room not found');
-        }
-        
-        // 3. Check if game already started
-        if(room.status == 'playing') {
-                return res.status(400).send('Game is already started');
+        // ATOMIC UPDATE
+        const updatedRoom = await roomModel.findOneAndUpdate(
+            { 
+                _id: roomId,
+                status: { $ne: 'playing' }, // Ensure game hasn't started
+                $expr: { $lt: [ { $size: "$players" }, "$roomCapacity" ] } // Ensure not full
+            },
+            { 
+                $push: { players: newPlayer } 
+            },
+            { 
+                new: true // Return the updated document
             }
-
-        // 4. Check capacity
-        if (room.players.length >= room.roomCapacity) {
-            return res.status(403).send('Room is full');
+        );
+        // Check if it worked
+        if (!updatedRoom) {
+            // We can do a quick check to give a specific error
+            const roomCheck = await roomModel.findById(roomId);
+            if (!roomCheck) return res.status(404).send('Room not found');
+            if (roomCheck.players.length >= roomCheck.roomCapacity) return res.status(403).send('Room is full');
+            return res.status(400).send('Unable to join room (Started or Full)');
         }
-
-        // 5. Update and Save
-        room.players.push({ userId: id, name, imageUrl });
-        const savedRoom = await room.save();
-
-        // 6. Emit Socket Event
+        // Emit Socket Event
         sendPlayerJoinedEvent(req, roomId);
-
-        // 7. Respond to Client
-        return res.status(201).json(savedRoom);
-
+        return res.status(201).json(updatedRoom);
     } catch (err) {
         console.error(err);
         if (err.name === 'ValidationError') {
@@ -162,99 +182,158 @@ exports.addPlayer = async (req, res) => {
     }
 };
 
-exports.isReady = (req, res) => {
+const mongoose = require('mongoose');
+
+exports.isReady = async (req, res) => {
     const { id } = req.userInfo;
     const roomId = req.params.id;
 
-    roomModel.findById(roomId)
-        .then(room => {
-            if (!room) {
-                return res.status(404).json({ error: 'Room not found' });
-            }
-            if (room.status === 'playing') {
-                return res.status(400).json({ error: 'Game is already started' });
-            }
+    try {
+        // ATOMIC UPDATE
+        const updatedRoom = await roomModel.findOneAndUpdate(
+            // find by room id, player id and status not playing
+            { 
+                _id: roomId, 
+                "players.userId": id,
+                status: { $ne: 'playing' } 
+            },
+            [{
+                $set: {
+                    players: {
+                        $map: {
+                            input: "$players",
+                            as: "p",
+                            in: {
+                                $cond: [
+                                    // find the player
+                                    { $eq: ["$$p.userId", id] },
+                                    
+                                    // Toggle Logic
+                                    { $mergeObjects: ["$$p", { isReady: { $not: "$$p.isReady" } }] },
+                                    
+                                    // Keep other players the same
+                                    "$$p"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }],
+            { new: true }
+        );
 
-            return roomModel.findOneAndUpdate(
-                { _id: roomId, "players.userId": id },
-                [{$set: {
-                        players: {$map: {
-                                    input: "$players",
-                                    as: "p",
-                                    in: {$cond: [
-                                            { $eq: ["$$p.userId", id] },
-                                            // Se l'ID coincide, inverte isReady
-                                            { $mergeObjects: ["$$p", { isReady: { $not: "$$p.isReady" } } ] },
-                                            // Altrimenti lascia il player così com'è
-                                            "$$p"
-                                        ]}
-                                }}
-                        }}],
-                { new: true }
-            );
-        })
-        .then(updatedRoom => {
-            if (!updatedRoom) {
-                return res.status(404).json({ error: 'User is not a player in this room' });
-            }
-
+        // SUCCESS CASE
+        if (updatedRoom) {
             const currentUser = updatedRoom.players.find(p => p.userId.toString() === id.toString());
-            const isPlayerReady = currentUser.isReady;
-            //Emit socket event
-            sendPlayerIsReadyEvent(req, roomId, {userId: id, isReady: isPlayerReady});
+            sendPlayerIsReadyEvent(req, roomId, { userId: id, isReady: currentUser.isReady });
             return res.status(200).json(updatedRoom);
-        })
-        .catch(err => {
-            console.error(err);
-            if (!res.headersSent) {
-                res.status(500).json({ error: 'Internal Server Error' });
-            }
-        });
+        }
+
+        // ERROR
+        const roomCheck = await roomModel.findById(roomId);
+
+        if (!roomCheck) {
+            return res.status(404).json({ error: 'Room not found' });
+        }
+        
+        // Check if user is in room
+        const playerExists = roomCheck.players.some(p => p.userId.toString() === id.toString());
+        if (!playerExists) {
+            return res.status(404).json({ error: 'User is not a player in this room' });
+        }
+
+        // Check if game started
+        if (roomCheck.status === 'playing') {
+            return res.status(400).json({ error: 'Game is already started' });
+        }
+
+        // Fallback
+        return res.status(500).json({ error: 'Update failed for unknown reason' });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
 };
 
-exports.startGame = (req, res) => {
+exports.startGame = async (req, res) => {
     const roomId = req.params.id;
     const userId = req.userInfo.id;
-    roomModel.findById(roomId)
-        .then(room => {
-            if (!room) {
-                return res.status(404).send('Room not found');
-            }
 
-            const currentUser = room.players.find(p => p.userId.toString() === userId.toString());
-            if (!currentUser || !currentUser.isHost) {
-                return res.status(403).json({ message: 'Only the host can start the game' });
-            }
+    try {
+        // check room exists
+        const room = await roomModel.findById(roomId);
+        if (!room) return res.status(404).send('Room not found');
 
-            const allReady = room.players.every(p => p.isReady === true);
-            if (!allReady) {
-                return res.status(400).json({ message: 'All players must be ready before starting' });
-            }
+        // check you are host
+        const currentUser = room.players.find(p => p.userId === userId);
+        if (!currentUser || !currentUser.isHost) {
+            return res.status(403).json({ message: 'Only the host can start the game' });
+        }
 
-            if (room.players.length < 6) {
-                return res.status(400).json({ message: 'At least 6 players are required to start' });
-            }       
-            room.status = 'playing';
-            return room.save();
-        })
-        .then(async updatedRoom => {
-            if (!updatedRoom || res.headersSent) return;
-            try {
-                // send info to gameplay-service to start the game
-                const responseGameData = await submitGameStart(updatedRoom);
-                // send the "GAME_STARTED" event to the players listening on the room socket
-                sendGameStartedEvent(req, roomId, responseGameData);
-                // return OK!
-                return res.sendStatus(204);
-            } catch (err) {
-                await roomModel.findByIdAndUpdate(roomId, { status: 'waiting' });
-                return res.status(502);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            res.status(500).send('Internal Server Error');
-        });
+        // check game not started yet
+        if (room.status === 'playing') {
+            return res.status(400).json({ message: 'Game is already started' });
+        }
+
+        // check minimum player count
+        if (room.players.length < 6) {
+            return res.status(400).json({ message: 'At least 6 players are required to start' });
+        }
+
+        // check all are ready
+        const allReady = room.players.every(p => p.isReady === true);
+        if (!allReady) {
+            return res.status(400).json({ message: 'All players must be ready before starting' });
+        }
+
+        // ATOMIC UPDATE
+        const updatedRoom = await roomModel.findOneAndUpdate(
+            // all checks again: status, player number and their readiness
+            {
+                _id: roomId,
+                status: 'waiting',
+                $expr: { $gte: [{ $size: "$players" }, 6] },
+                "players.isReady": { $ne: false } 
+            },
+            { 
+                $set: { status: 'playing' } 
+            },
+            { new: true }
+        );
+
+        if (!updatedRoom) {
+            // If this fails, it means the state changed between first check and the db operation
+            return res.status(409).json({ 
+                message: 'Cannot start: A player left or became unready at the last moment.' 
+            });
+        }
+
+        // EXTERNAL SERVICE CALL
+        try {
+            // Send info to gameplay-service
+            const responseGameData = await submitGameStart(updatedRoom);
+            
+            // Broadcast "Game Started" to sockets
+            sendGameStartedEvent(req, roomId, responseGameData);
+            
+            // Return Success
+            return res.sendStatus(204);
+        } catch (extError) {
+            // 4. COMPENSATION (Rollback)
+            // If the game server failed to start, we MUST unlock the room 
+            // so players aren't stuck in "playing" mode forever.
+            console.error("Gameplay Service Failed. Rolling back room status...", extError);
+            
+            await roomModel.findByIdAndUpdate(roomId, { status: 'waiting' });
+            
+            return res.status(502).json({ message: "Failed to initialize game server. Please try again." });
+        }
+
+    } catch (err) {
+        console.error("Start Game Error:", err);
+        return res.status(500).send('Internal Server Error');
+    }
 };
 
 submitGameStart = async (gameData) => {
@@ -274,60 +353,81 @@ submitGameStart = async (gameData) => {
     return response.data;
 }
 
-exports.removePlayer = (req, res) => {
-    const { id } = req.params; //roomId
-    let { userId } = req.params; //player to remove
-    const callerId = req.userInfo.id; //API caller
-    //If the userId is not provided
-    if (!userId) {
-        userId = callerId;
-    }
+exports.removePlayer = async (req, res) => {
+    const { id: roomId } = req.params; 
+    let { userId: targetUserId } = req.params; 
+    const callerId = req.userInfo.id;
 
-    roomModel.findById(id)
-        .then(room => {
-            if (!room) {
-                return res.status(404).send('Room not found');
-            }
-            if (room.status == 'playing') {
-                return res.status(400).send('Game is already started');
-            }
-            const caller = room.players.find(p => p.userId === callerId);
-            const playerToRemove = room.players.find(p => p.userId === userId);
-            if (!playerToRemove) {
-                return res.status(404).send('Player not found in this room');
-            }
-            //only the host can remove other players otherwise a player can only remove himself
-            const isCallerHost = caller && caller.isHost;
-            const isSelfRemoval = callerId === userId;
-            if (!isCallerHost && !isSelfRemoval) {
-                return res.status(403).send('Unauthorized (Only the host can remove other players)');
-            }
-            //if playerToRemove is the Host, the room is deleted
-            if (playerToRemove.isHost) {
-                return roomModel.findByIdAndDelete(id)
-                    .then(() => {
-                        sendRoomDeletedEvent(req, id);
-                        return res.status(200).json({ message: 'Room deleted because the host left' });
-                    });
+    // Default to self-removal if no target provided
+    if (!targetUserId) targetUserId = callerId;
+
+    try {
+        // Check room exists
+        const room = await roomModel.findById(roomId);
+        if (!room) return res.status(404).send('Room not found');
+
+        // Check Game Status
+        if (room.status === 'playing') {
+            return res.status(400).send('Game is already started');
+        }
+
+        // Find Players
+        const caller = room.players.find(p => p.userId === callerId);
+        const playerToRemove = room.players.find(p => p.userId === targetUserId);
+
+        if (!playerToRemove) {
+            return res.status(404).send('Player not found in this room');
+        }
+
+        // Authorization Check
+        const isCallerHost = caller && caller.isHost;
+        const isSelfRemoval = callerId === targetUserId;
+
+        if (!isCallerHost && !isSelfRemoval) {
+            return res.status(403).send('Unauthorized');
+        }
+
+        // Option A: Host Leaves -> Delete Room
+        if (playerToRemove.isHost) {
+            const deletedRoom = await roomModel.findOneAndDelete({
+                _id: roomId,
+                status: { $ne: 'playing' } // Safety check
+            });
+
+            if (!deletedRoom) return res.status(400).send('Game has started');
+
+            sendRoomDeletedEvent(req, roomId);
+            return res.status(200).json({ message: 'Room deleted' });
+        } 
+        
+        // Option B: Regular Player leaves -> remove him
+        else {
+            const updatedRoom = await roomModel.findOneAndUpdate(
+                { 
+                    _id: roomId, 
+                    status: { $ne: 'playing' } 
+                },
+                { 
+                    $pull: { players: { userId: targetUserId } } 
+                },
+                { new: true }
+            );
+
+            if (!updatedRoom) return res.status(400).send('Game has started or room deleted');
+
+            // Events handling
+            if (isSelfRemoval) {
+                sendPlayerLeftEvent(req, roomId, { userId: targetUserId }); 
             } else {
-                return roomModel.findByIdAndUpdate(
-                    id,
-                    { $pull: { players: { userId: userId } } },
-                    { new: true }
-                ).then(doc => {
-                    if(userId !== callerId) {
-                        sendPlayerKickedEvent(req, id, { userId: userId });
-                    } else {
-                        sendPlayerLeftEvent(req, id);
-                    }
-                    res.json(doc);
-                });
+                sendPlayerKickedEvent(req, roomId, { userId: targetUserId });
             }
-        })
-        .catch(err => {
-            console.error(err);
-            res.status(500).send('Internal Server Error while removing player');
-        });
+
+            return res.status(200).json(updatedRoom);
+        }
+    } catch (err) {
+        console.error("Remove Player Error:", err);
+        return res.status(500).send('Internal Server Error');
+    }
 };
 
 exports.deleteRoom = (req, res) => {
