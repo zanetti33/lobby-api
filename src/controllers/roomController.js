@@ -52,14 +52,18 @@ const generateRandomCode = () => {
 };
 
 exports.createRoom = (req, res) => {
-const { id, name, imageUrl } = req.userInfo;
+    const { id, name, imageUrl } = req.userInfo;
+
+    if (!req.body.name || !req.body.gameMode || !req.body.roomCapacity) {
+        return res.status(400).send('Missing parameters');
+    }
 
     const attemptSave = () => {
         const code = generateRandomCode();
 
         roomModel.findOne({ code: code })
             .then(existingCode => {
-                if (existingCode) return attemptSave(); //Se esiste, riprova
+                if (existingCode) return attemptSave(); //If it exists, retry with a new code
 
                 const roomData = {
                     code: code,
@@ -76,10 +80,6 @@ const { id, name, imageUrl } = req.userInfo;
                 };
 
                 const room = new roomModel(roomData);
-                if (!room.name || !room.gameMode || !room.roomCapacity) {
-                    return res.status(400).send('Missing parameters');
-                }
-
                 return room.save();
             })
             .then(doc => {

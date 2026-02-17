@@ -1,0 +1,108 @@
+const roomController = require('./roomController');
+const { roomModel } = require('../models/roomModel');
+
+//Mock dependencies
+jest.mock('../models/roomModel');
+jest.mock('axios');
+jest.mock('../socket/roomSocket', () => ({
+    sendRoomDeletedEvent: jest.fn(),
+    sendPlayerLeftEvent: jest.fn(),
+    sendPlayerJoinedEvent: jest.fn(),
+    sendGameStartedEvent: jest.fn(),
+    sendPlayerIsReadyEvent: jest.fn(),
+    sendPlayerKickedEvent: jest.fn()
+}));
+
+describe('Room Controller', () => {
+    let mockReq;
+    let mockRes;
+
+    beforeEach(() => {
+        // fake request and response
+        mockReq = {
+            userInfo: { id: 'user123', name: 'UserTest', imageUrl: '' },
+            body: {},
+            params: { id: 'room_123' }
+        };
+        mockRes = {
+            status: jest.fn().mockReturnThis(),
+            send: jest.fn(),
+            json: jest.fn(),
+            sendStatus: jest.fn()
+        };
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe('createRoom', () => {
+        it('return 400 if required parameters are missing', async () => {
+            mockReq.body = { gameMode: 'classic' }; // Missing name (and roomCapacity)
+
+            await roomController.createRoom(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.send).toHaveBeenCalledWith('Missing parameters');
+        });
+    });
+
+    describe('startGame', () => {
+        it('return 403 if the user trying to start is not the host', async () => {
+            const mockRoom = {
+                _id: 'room_123',
+                status: 'waiting',
+                players: [
+                    { userId: 'host456', isHost: true },
+                    { userId: 'user123', isHost: false } 
+                ]
+            };
+            roomModel.findById.mockResolvedValue(mockRoom);
+
+            await roomController.startGame(mockReq, mockRes);
+
+            expect(roomModel.findById).toHaveBeenCalledWith('room_123');
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.json).toHaveBeenCalledWith({ message: 'Only the host can start the game' });
+        });
+
+        it('return 400 if there are less than 6 players in the room', async () => {
+            const mockRoom = {
+                _id: 'room_123',
+                status: 'waiting',
+                players: [
+                    { userId: 'user123', isHost: true, isReady: true },
+                    { userId: 'player2', isHost: false, isReady: true },
+                    { userId: 'player3', isHost: false, isReady: true }
+                ]
+            };
+            roomModel.findById.mockResolvedValue(mockRoom);
+
+            await roomController.startGame(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ message: 'At least 6 players are required to start' });
+        });
+        
+        it('return 400 if not all players are ready', async () => {
+            const mockRoom = {
+                _id: 'room_123',
+                status: 'waiting',
+                players: [
+                    { userId: 'user123', isHost: true, isReady: true },
+                    { userId: 'p2', isHost: false, isReady: true },
+                    { userId: 'p3', isHost: false, isReady: true },
+                    { userId: 'p4', isHost: false, isReady: true },
+                    { userId: 'p5', isHost: false, isReady: true },
+                    { userId: 'p6', isHost: false, isReady: false } // Not ready
+                ]
+            };
+            roomModel.findById.mockResolvedValue(mockRoom);
+
+            await roomController.startGame(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ message: 'All players must be ready before starting' });
+        });
+    });
+});
