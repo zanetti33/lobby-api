@@ -55,12 +55,11 @@ exports.createRoom = async (req, res) => {
     const { id, name, imageUrl } = req.userInfo;
     const { name: roomName, gameMode, roomCapacity } = req.body;
 
-    // Validate Input First (Fail Fast)
     if (!roomName || !gameMode || !roomCapacity) {
         return res.status(400).send('Missing parameters');
     }
 
-    // Retry Logic (Loop instead of Recursion)
+    // Retry Logic
     let retries = 0;
     const MAX_RETRIES = 5;
 
@@ -75,7 +74,7 @@ exports.createRoom = async (req, res) => {
                 continue; 
             }
 
-            // Create and Save (if code or name are now duplicates we retries)
+            // Create and Save (if code or name are now duplicates we retry)
             const room = new roomModel({
                 code,
                 name: roomName,
