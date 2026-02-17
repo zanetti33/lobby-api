@@ -105,4 +105,69 @@ describe('Room Controller', () => {
             expect(mockRes.json).toHaveBeenCalledWith({ message: 'All players must be ready before starting' });
         });
     });
+
+    describe('addPlayer', () => {
+        it('return 409 if the user is already in another room', async () => {
+            const existingRoom = { _id: 'another_room_id', code: 'XYZ12' };
+            // User is already in another room
+            roomModel.findOne.mockResolvedValue(existingRoom);
+
+            await roomController.addPlayer(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(409);
+            expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('User already in a room'));
+        });
+
+        it('return 403 if room is full', async () => {
+            roomModel.findOne.mockResolvedValue(null); // Not in other rooms
+            
+            // Update failed because the room is full
+            roomModel.findOneAndUpdate.mockResolvedValue(null);
+            roomModel.findById.mockResolvedValue({ players: [1,2,3,4,5,6], roomCapacity: 6 });
+
+            await roomController.addPlayer(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.send).toHaveBeenCalledWith('Room is full');
+        });
+    });
+
+    describe('removePlayer', () => {
+        it('delete the room if the Host is leaving', async () => {
+            // Host is leaving, so userId is not provided in params
+            mockReq.params.userId = undefined;
+
+            const mockRoom = {
+                _id: 'room_abc',
+                status: 'waiting',
+                players: [{ userId: 'user123', isHost: true }]
+            };
+            roomModel.findById.mockResolvedValue(mockRoom);
+            roomModel.findOneAndDelete.mockResolvedValue(mockRoom);
+
+            await roomController.removePlayer(mockReq, mockRes);
+
+            expect(roomModel.findOneAndDelete).toHaveBeenCalled();
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.json).toHaveBeenCalledWith({ message: 'Room deleted' });
+        });
+
+        it('return 403 if a player (not host) tries to kick someone else', async () => {
+            mockReq.params.userId = 'target_user_456';
+            const mockRoom = {
+                _id: 'room_abc',
+                status: 'waiting',
+                players: [
+                    { userId: 'user123', isHost: false },
+                    { userId: 'target_user_456', isHost: false }
+                ]
+            };
+            roomModel.findById.mockResolvedValue(mockRoom);
+
+            await roomController.removePlayer(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.send).toHaveBeenCalledWith('Unauthorized');
+        });
+    });
 });
