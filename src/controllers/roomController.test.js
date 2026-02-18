@@ -37,7 +37,7 @@ describe('Room Controller', () => {
     });
 
     describe('createRoom', () => {
-        it('return 400 if required parameters are missing', async () => {
+        test('don\'t create a room if required parameters are missing', async () => {
             mockReq.body = { gameMode: 'classic' }; // Missing name (and roomCapacity)
 
             await roomController.createRoom(mockReq, mockRes);
@@ -48,7 +48,7 @@ describe('Room Controller', () => {
     });
 
     describe('startGame', () => {
-        it('return 403 if the user trying to start is not the host', async () => {
+        test('don\'t start the game if the user trying to start is not the host', async () => {
             const mockRoom = {
                 _id: 'room_123',
                 status: 'waiting',
@@ -66,7 +66,7 @@ describe('Room Controller', () => {
             expect(mockRes.json).toHaveBeenCalledWith({ message: 'Only the host can start the game' });
         });
 
-        it('return 400 if there are less than 6 players in the room', async () => {
+        test('check if there are at least 6 players in the room', async () => {
             const mockRoom = {
                 _id: 'room_123',
                 status: 'waiting',
@@ -84,7 +84,7 @@ describe('Room Controller', () => {
             expect(mockRes.json).toHaveBeenCalledWith({ message: 'At least 6 players are required to start' });
         });
         
-        it('return 400 if not all players are ready', async () => {
+        test('all players must be ready', async () => {
             const mockRoom = {
                 _id: 'room_123',
                 status: 'waiting',
@@ -107,7 +107,7 @@ describe('Room Controller', () => {
     });
 
     describe('addPlayer', () => {
-        it('return 409 if the user is already in another room', async () => {
+        test('check if the user is already in another room', async () => {
             const existingRoom = { _id: 'another_room_id', code: 'XYZ12' };
             // User is already in another room
             roomModel.findOne.mockResolvedValue(existingRoom);
@@ -118,7 +118,7 @@ describe('Room Controller', () => {
             expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('User already in a room'));
         });
 
-        it('return 403 if room is full', async () => {
+        test('check if room is full', async () => {
             roomModel.findOne.mockResolvedValue(null); // Not in other rooms
             
             // Update failed because the room is full
@@ -133,7 +133,7 @@ describe('Room Controller', () => {
     });
 
     describe('removePlayer', () => {
-        it('delete the room if the Host is leaving', async () => {
+        test('delete the room if the host is leaving', async () => {
             // Host is leaving, so userId is not provided in params
             mockReq.params.userId = undefined;
 
@@ -152,7 +152,7 @@ describe('Room Controller', () => {
             expect(mockRes.json).toHaveBeenCalledWith({ message: 'Room deleted' });
         });
 
-        it('return 403 if a player (not host) tries to kick someone else', async () => {
+        test('don\'t remove a player if the user (not host) tries to kick someone else', async () => {
             mockReq.params.userId = 'target_user_456';
             const mockRoom = {
                 _id: 'room_abc',
